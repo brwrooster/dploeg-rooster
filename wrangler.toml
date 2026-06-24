@@ -1,0 +1,8 @@
+name = "dploeg-rooster-api"
+main = "src/worker.js"
+compatibility_date = "2024-09-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "dploeg-rooster-db"
+database_id = "PLAATS_HIER_JE_DATABASE_ID"

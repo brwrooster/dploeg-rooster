@@ -13,6 +13,19 @@
   ::-webkit-scrollbar { height: 6px; width: 6px; }
   ::-webkit-scrollbar-thumb { background: #2A2E37; border-radius: 3px; }
 </style>
+  <script>
+  window.addEventListener('error', function (e) {
+    var el = document.getElementById('error-box');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'error-box';
+      el.style.cssText = 'position:fixed;inset:0;background:#101216;color:#ff8a7a;font-family:monospace;font-size:13px;padding:20px;white-space:pre-wrap;overflow:auto;z-index:99999;';
+      document.body.appendChild(el);
+    }
+    el.textContent = 'JS fout:\n' + e.message + '\n\nBestand: ' + e.filename + '\nRegel: ' + e.lineno + ', kolom: ' + e.colno;
+  });
+</script>
+
 </head>
 <body>
 <div id="root"></div>

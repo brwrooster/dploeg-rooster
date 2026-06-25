@@ -9,13 +9,12 @@
 <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
 <script src="https://cdn.tailwindcss.com"></script>
 
-
 <style>
   body { background: #101216; margin: 0; }
   ::-webkit-scrollbar { height: 6px; width: 6px; }
   ::-webkit-scrollbar-thumb { background: #2A2E37; border-radius: 3px; }
 </style>
-  <script>
+<script>
   window.addEventListener('error', function (e) {
     var el = document.getElementById('error-box');
     if (!el) {
@@ -27,7 +26,6 @@
     el.textContent = 'JS fout:\n' + e.message + '\n\nBestand: ' + e.filename + '\nRegel: ' + e.lineno + ', kolom: ' + e.colno;
   });
 </script>
-
 </head>
 <body>
 <div id="root"></div>
@@ -36,9 +34,7 @@
 const { useState, useEffect, useMemo, useCallback } = React;
 
 // ====== CONFIG ======
-// Vul hier de URL van je gedeployde Worker in, bv. https://dploeg-rooster-api.jouwnaam.workers.dev
 const API_BASE = window.ROOSTER_API_BASE || "https://dploeg-rooster.richard-bos.workers.dev";
-
 
 const FUNCTIES = [
   { code: "B", label: "Bevelvoerder", slots: 1, color: "#C9A24B" },
@@ -347,7 +343,7 @@ function TeamTab({ api, refreshKey, bumpRefresh }) {
     api.call("/api/personen").then((d) => setPersonen(d.personen)).finally(() => setLaden(false));
   }, [refreshKey]);
 
-    async function addPersoon() {
+  async function addPersoon() {
     const naam = nieuweNaam.trim();
     if (!naam || personen.length >= MAX_NAMEN) return;
     setNieuweNaam("");
@@ -410,16 +406,6 @@ function TeamTab({ api, refreshKey, bumpRefresh }) {
     }
   }
 
-  async function togglePrioriteit(persoon, code) {
-    const f = persoon.functies.find((x) => x.code === code);
-    const nieuw = f.prioriteit === "vast" ? "reserve" : "vast";
-    await api.call("/api/personen/" + persoon.id + "/functie", {
-      method: "POST",
-      body: JSON.stringify({ functie_code: code, actief: true, prioriteit: nieuw }),
-    });
-    bumpRefresh();
-  }
-
   if (laden) return <div className="text-[#6B7280] text-sm">Laden...</div>;
 
   return (
@@ -470,6 +456,7 @@ function TeamTab({ api, refreshKey, bumpRefresh }) {
     </div>
   );
 }
+
 // ---------- Admin: Diensten ----------
 function DienstenTab({ api, refreshKey, bumpRefresh }) {
   const [diensten, setDiensten] = useState([]);
@@ -503,29 +490,65 @@ function DienstenTab({ api, refreshKey, bumpRefresh }) {
     } catch (e) { alert(e.message); }
   }
   async function addPeriode() {
-    await api.call("/api/diensten/periode", { method: "POST", body: JSON.stringify({ van: periodeStart, tot: periodeEinde, interval: Number(periodeInterval) }) });
-    setPeriodeMode(false);
-    bumpRefresh();
+    try {
+      await api.call("/api/diensten/periode", { method: "POST", body: JSON.stringify({ van: periodeStart, tot: periodeEinde, interval: Number(periodeInterval) }) });
+      setPeriodeMode(false);
+      bumpRefresh();
+    } catch (e) { alert(e.message); }
   }
   async function removeDienst(id) {
-    await api.call("/api/diensten/" + id, { method: "DELETE" });
-    bumpRefresh();
+    setDiensten((prev) => prev.filter((d) => d.id !== id));
+    try {
+      await api.call("/api/diensten/" + id, { method: "DELETE" });
+    } catch (e) {
+      alert(e.message);
+      bumpRefresh();
+    }
   }
   async function toggleBeschikbaar(dienstId, persoonId, beschikbaar) {
-    await api.call("/api/diensten/" + dienstId + "/beschikbaar", { method: "POST", body: JSON.stringify({ persoon_id: persoonId, beschikbaar }) });
-    bumpRefresh();
+    setDiensten((prev) =>
+      prev.map((d) => {
+        if (d.id !== dienstId) return d;
+        const huidige = d.beschikbaar || [];
+        return {
+          ...d,
+          beschikbaar: beschikbaar ? [...huidige, persoonId] : huidige.filter((id) => id !== persoonId),
+        };
+      })
+    );
+    try {
+      await api.call("/api/diensten/" + dienstId + "/beschikbaar", { method: "POST", body: JSON.stringify({ persoon_id: persoonId, beschikbaar }) });
+    } catch (e) {
+      alert(e.message);
+      bumpRefresh();
+    }
   }
   async function setAlle(dienstId, aan) {
-    await api.call("/api/diensten/" + dienstId + "/beschikbaar-alle", { method: "POST", body: JSON.stringify({ aan }) });
-    bumpRefresh();
+    setDiensten((prev) =>
+      prev.map((d) => (d.id === dienstId ? { ...d, beschikbaar: aan ? personen.map((p) => p.id) : [] } : d))
+    );
+    try {
+      await api.call("/api/diensten/" + dienstId + "/beschikbaar-alle", { method: "POST", body: JSON.stringify({ aan }) });
+    } catch (e) {
+      alert(e.message);
+      bumpRefresh();
+    }
   }
   async function indelenEen(dienstId) {
-    await api.call("/api/diensten/" + dienstId + "/indelen", { method: "POST" });
-    bumpRefresh();
+    try {
+      const result = await api.call("/api/diensten/" + dienstId + "/indelen", { method: "POST" });
+      setDiensten((prev) =>
+        prev.map((d) => (d.id === dienstId ? { ...d, toewijzing: result.toewijzing, tekorten: result.tekorten } : d))
+      );
+    } catch (e) {
+      alert(e.message);
+    }
   }
   async function indelenAlles() {
-    await api.call("/api/diensten/indelen-alles", { method: "POST" });
-    bumpRefresh();
+    try {
+      await api.call("/api/diensten/indelen-alles", { method: "POST" });
+      bumpRefresh();
+    } catch (e) { alert(e.message); }
   }
 
   if (laden) return <div className="text-[#6B7280] text-sm">Laden...</div>;
@@ -598,6 +621,7 @@ function DienstenTab({ api, refreshKey, bumpRefresh }) {
     </div>
   );
 }
+
 function VerdelingTabel({ personen, diensten }) {
   const counts = useMemo(() => {
     const c = {};
@@ -692,16 +716,6 @@ function AdminApp({ api, onLogout, onViewGuest }) {
 function App() {
   const api = useApi();
   const [view, setView] = useState(() => (window.location.hash === "#gast" ? "guest" : api.ingelogd ? "admin" : "login"));
-
-  if (API_BASE.includes("PLACEHOLDER")) {
-    return (
-      <div className="min-h-screen bg-[#101216] flex items-center justify-center p-6 text-center">
-        <div className="text-[#E0A33D] text-sm max-w-sm">
-          API-adres nog niet ingesteld. Vul de Worker-URL in op de plek met <code>__API_BASE_PLACEHOLDER__</code> in dit bestand.
-        </div>
-      </div>
-    );
-  }
 
   if (view === "guest") return <GastWeergave />;
   if (view === "admin" || api.ingelogd) {

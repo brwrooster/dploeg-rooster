@@ -347,24 +347,69 @@ function TeamTab({ api, refreshKey, bumpRefresh }) {
     api.call("/api/personen").then((d) => setPersonen(d.personen)).finally(() => setLaden(false));
   }, [refreshKey]);
 
-  async function addPersoon() {
-    if (!nieuweNaam.trim() || personen.length >= MAX_NAMEN) return;
-    await api.call("/api/personen", { method: "POST", body: JSON.stringify({ naam: nieuweNaam.trim() }) });
+    async function addPersoon() {
+    const naam = nieuweNaam.trim();
+    if (!naam || personen.length >= MAX_NAMEN) return;
     setNieuweNaam("");
-    bumpRefresh();
+    try {
+      const result = await api.call("/api/personen", { method: "POST", body: JSON.stringify({ naam }) });
+      setPersonen((prev) => [...prev, { id: result.id, naam: result.naam, functies: [] }]);
+    } catch (e) {
+      alert(e.message);
+    }
   }
   async function removePersoon(id) {
-    await api.call("/api/personen/" + id, { method: "DELETE" });
-    bumpRefresh();
+    setPersonen((prev) => prev.filter((p) => p.id !== id));
+    try {
+      await api.call("/api/personen/" + id, { method: "DELETE" });
+    } catch (e) {
+      alert(e.message);
+      bumpRefresh();
+    }
   }
   async function toggleFunctie(persoon, code) {
     const heeft = persoon.functies.some((f) => f.code === code);
-    await api.call("/api/personen/" + persoon.id + "/functie", {
-      method: "POST",
-      body: JSON.stringify({ functie_code: code, actief: !heeft, prioriteit: "vast" }),
-    });
-    bumpRefresh();
+    setPersonen((prev) =>
+      prev.map((p) => {
+        if (p.id !== persoon.id) return p;
+        return {
+          ...p,
+          functies: heeft
+            ? p.functies.filter((f) => f.code !== code)
+            : [...p.functies, { code, prioriteit: "vast" }],
+        };
+      })
+    );
+    try {
+      await api.call("/api/personen/" + persoon.id + "/functie", {
+        method: "POST",
+        body: JSON.stringify({ functie_code: code, actief: !heeft, prioriteit: "vast" }),
+      });
+    } catch (e) {
+      alert(e.message);
+      bumpRefresh();
+    }
   }
+  async function togglePrioriteit(persoon, code) {
+    const f = persoon.functies.find((x) => x.code === code);
+    const nieuw = f.prioriteit === "vast" ? "reserve" : "vast";
+    setPersonen((prev) =>
+      prev.map((p) => {
+        if (p.id !== persoon.id) return p;
+        return { ...p, functies: p.functies.map((x) => (x.code === code ? { ...x, prioriteit: nieuw } : x)) };
+      })
+    );
+    try {
+      await api.call("/api/personen/" + persoon.id + "/functie", {
+        method: "POST",
+        body: JSON.stringify({ functie_code: code, actief: true, prioriteit: nieuw }),
+      });
+    } catch (e) {
+      alert(e.message);
+      bumpRefresh();
+    }
+  }
+
   async function togglePrioriteit(persoon, code) {
     const f = persoon.functies.find((x) => x.code === code);
     const nieuw = f.prioriteit === "vast" ? "reserve" : "vast";

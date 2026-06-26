@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-<title>D-Ploeg Rooster</title>
+<title>D-Ploeg Veluwsekant</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
@@ -52,6 +52,18 @@ function todayISO() {
 function formatDateNL(iso) {
   const d = new Date(iso + "T00:00:00");
   return d.toLocaleDateString("nl-NL", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+}
+
+// Vast weekschema huishoudelijke taken — alleen getoond op dagen die ook een dienst hebben.
+// getDay(): 0=zondag, 1=maandag, ..., 4=donderdag, 5=vrijdag, 6=zaterdag
+const SCHOONMAAK_PER_WEEKDAG = {
+  4: "Vloer schoonmaken",
+  5: "Keuken schoonmaken",
+  6: "Bovenverdieping schoonmaken",
+};
+function schoonmaakTaakVoor(iso) {
+  const dag = new Date(iso + "T00:00:00").getDay();
+  return SCHOONMAAK_PER_WEEKDAG[dag] || null;
 }
 
 // ---------- API helper ----------
@@ -133,12 +145,20 @@ function EmptyState({ title, body }) {
 
 function DienstKaart({ dienst, personMap, beschikbaarMode, onToggleBeschikbaar, onSetAlle }) {
   const heeftTekort = dienst.tekorten && dienst.tekorten.length > 0;
+  const taak = schoonmaakTaakVoor(dienst.datum);
   return (
     <div className="bg-[#16181D] border border-[#262A33] rounded-xl overflow-hidden">
-      <div className="px-4 py-3 flex items-center justify-between border-b border-[#1F222A]">
-        <div className="font-medium text-[#E8E6E1] text-sm capitalize">{formatDateNL(dienst.datum)}</div>
+      <div className="px-4 py-3 flex items-center justify-between border-b border-[#1F222A] gap-2">
+        <div className="min-w-0">
+          <div className="font-medium text-[#E8E6E1] text-sm capitalize">{formatDateNL(dienst.datum)}</div>
+          {taak && (
+            <div className="text-[11px] text-[#8AA0B5] mt-0.5 flex items-center gap-1">
+              <span>🧹</span> {taak}
+            </div>
+          )}
+        </div>
         {heeftTekort && (
-          <div className="flex items-center gap-1 text-[#E0A33D] text-[11px] font-medium">
+          <div className="flex items-center gap-1 text-[#E0A33D] text-[11px] font-medium flex-shrink-0">
             ⚠ Tekort: {dienst.tekorten.join(", ")}
           </div>
         )}
@@ -199,15 +219,21 @@ function Dagstaat({ dienst, personMap }) {
     );
   }
   const heeftTekort = dienst.tekorten && dienst.tekorten.length > 0;
+  const taak = schoonmaakTaakVoor(dienst.datum);
   return (
     <div className="bg-gradient-to-br from-[#1C2018] to-[#16181D] border border-[#3D6B4C]/40 rounded-xl p-4 mb-5 shadow-lg shadow-black/20">
-      <div className="flex items-center justify-between mb-3">
-        <div>
+      <div className="flex items-center justify-between mb-3 gap-2">
+        <div className="min-w-0">
           <div className="text-[10px] uppercase tracking-widest text-[#7FAE8C] font-semibold mb-0.5">Dagstaat · Vandaag</div>
           <div className="text-[#E8E6E1] font-bold text-base capitalize">{formatDateNL(dienst.datum)}</div>
+          {taak && (
+            <div className="text-[12px] text-[#8AA0B5] mt-1 flex items-center gap-1">
+              <span>🧹</span> {taak}
+            </div>
+          )}
         </div>
         {heeftTekort && (
-          <div className="flex items-center gap-1 text-[#E0A33D] text-[11px] font-medium bg-[#1F1B12] border border-[#3A3320] rounded-md px-2 py-1">
+          <div className="flex items-center gap-1 text-[#E0A33D] text-[11px] font-medium bg-[#1F1B12] border border-[#3A3320] rounded-md px-2 py-1 flex-shrink-0">
             ⚠ Tekort: {dienst.tekorten.join(", ")}
           </div>
         )}
@@ -233,7 +259,7 @@ function Dagstaat({ dienst, personMap }) {
 }
 
 // ---------- Guest view ----------
-function GastWeergave() {
+function GastWeergave({ onGoToLogin }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
 
@@ -260,9 +286,17 @@ function GastWeergave() {
 
   return (
     <div className="min-h-screen bg-[#101216]">
-      <div className="sticky top-0 z-10 bg-[#101216]/95 backdrop-blur border-b border-[#1F222A] px-4 py-3">
-        <div className="text-[#E8E6E1] font-bold text-base leading-tight">D-Ploeg Rooster</div>
-        <div className="text-[#6B7280] text-[11px] uppercase tracking-wider">Alleen-lezen</div>
+      <div className="sticky top-0 z-10 bg-[#101216]/95 backdrop-blur border-b border-[#1F222A] px-4 py-3 flex items-center justify-between">
+        <div>
+          <div className="text-[#E8E6E1] font-bold text-base leading-tight">D-Ploeg Veluwsekant</div>
+          <div className="text-[#6B7280] text-[11px] uppercase tracking-wider">Alleen-lezen</div>
+        </div>
+        <button
+          onClick={onGoToLogin}
+          className="text-[11px] font-medium text-[#8A8F9C] hover:text-[#E8E6E1] border border-[#2A2E37] rounded-lg px-3 py-1.5 flex-shrink-0"
+        >
+          Inloggen als beheerder
+        </button>
       </div>
       <div className="px-4 py-4 max-w-2xl mx-auto">
         <Dagstaat dienst={dienstVandaag} personMap={personMap} />
@@ -270,9 +304,12 @@ function GastWeergave() {
         {sorted.length === 0 ? (
           <EmptyState title="Nog geen diensten gepland" body="Zodra de beheerder diensten heeft ingedeeld, verschijnen ze hier." />
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3 mb-6">
             {overige.map((d) => <DienstKaart key={d.id} dienst={d} personMap={personMap} />)}
           </div>
+        )}
+        {(data.personen || []).length > 0 && (
+          <VerdelingTabel personen={data.personen} diensten={data.diensten || []} />
         )}
       </div>
     </div>
@@ -308,7 +345,7 @@ function LoginScherm({ api, onLoggedIn, onGuest }) {
             <span className="text-[#101216] font-bold text-lg">D</span>
           </div>
           <div>
-            <div className="text-[#E8E6E1] font-bold text-lg leading-tight tracking-tight">Ploegrooster</div>
+            <div className="text-[#E8E6E1] font-bold text-lg leading-tight tracking-tight">D-Ploeg Veluwsekant</div>
             <div className="text-[#6B7280] text-xs uppercase tracking-widest">Beheer</div>
           </div>
         </div>
@@ -688,7 +725,7 @@ function AdminApp({ api, onLogout, onViewGuest }) {
           <div className="w-8 h-8 rounded-md bg-[#B5483D] flex items-center justify-center flex-shrink-0">
             <span className="text-[#101216] font-bold text-sm">D</span>
           </div>
-          <div className="text-[#E8E6E1] font-bold text-sm leading-tight">Ploegrooster</div>
+          <div className="text-[#E8E6E1] font-bold text-sm leading-tight">D-Ploeg Veluwsekant</div>
         </div>
         <div className="flex items-center gap-3">
           <button onClick={onViewGuest} className="text-[#8A8F9C] hover:text-[#E8E6E1] text-xs">Gast-weergave</button>
@@ -717,7 +754,7 @@ function App() {
   const api = useApi();
   const [view, setView] = useState(() => (window.location.hash === "#gast" ? "guest" : api.ingelogd ? "admin" : "login"));
 
-  if (view === "guest") return <GastWeergave />;
+  if (view === "guest") return <GastWeergave onGoToLogin={() => setView("login")} />;
   if (view === "admin" || api.ingelogd) {
     return <AdminApp api={api} onLogout={() => { api.logout(); setView("login"); }} onViewGuest={() => setView("guest")} />;
   }

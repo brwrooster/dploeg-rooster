@@ -420,10 +420,10 @@ async function handleIndelenAlles(req, env) {
 
 // Publieke, read-only endpoint voor gasten — geen login nodig
 async function handlePubliekRooster(req, env) {
-  const personen = await env.DB.prepare("SELECT id, naam FROM personen ORDER BY volgorde, naam").all();
+  const personen = await getPersonenMetFuncties(env.DB);
   const dienstenResp = await handleGetDiensten(req, env);
   const dienstenData = await dienstenResp.json();
-  return json({ personen: personen.results, diensten: dienstenData.diensten });
+  return json({ personen, diensten: dienstenData.diensten });
 }
 
 // ---------- Router ----------

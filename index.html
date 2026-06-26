@@ -282,7 +282,7 @@ function GastWeergave({ onGoToLogin }) {
   const sorted = [...(data.diensten || [])].sort((a, b) => a.datum.localeCompare(b.datum));
   const vandaag = todayISO();
   const dienstVandaag = sorted.find((d) => d.datum === vandaag);
-  const overige = sorted.filter((d) => d.datum !== vandaag);
+  const overige = sorted.filter((d) => d.datum !== vandaag && d.datum >= vandaag);
 
   return (
     <div className="min-h-screen bg-[#101216]">

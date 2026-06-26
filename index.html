@@ -45,6 +45,7 @@ const FUNCTIES = [
 ];
 const FUNCTIE_ORDER = ["B", "M", "CTS", "CL", "OL"];
 const MAX_NAMEN = 10;
+const LOGO_URL = "/c953c7ff-b499-4aad-a62a-b332b3bed244.jpeg";
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -287,9 +288,14 @@ function GastWeergave({ onGoToLogin }) {
   return (
     <div className="min-h-screen bg-[#101216]">
       <div className="sticky top-0 z-10 bg-[#101216]/95 backdrop-blur border-b border-[#1F222A] px-4 py-3 flex items-center justify-between">
-        <div>
-          <div className="text-[#E8E6E1] font-bold text-base leading-tight">D-Ploeg Veluwsekant</div>
-          <div className="text-[#6B7280] text-[11px] uppercase tracking-wider">Alleen-lezen</div>
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-md bg-[#B5483D] flex items-center justify-center flex-shrink-0 overflow-hidden">
+            <img src={LOGO_URL} alt="Logo" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = "none"; e.target.parentElement.innerHTML = '<span class="text-[#101216] font-bold text-sm">D</span>'; }} />
+          </div>
+          <div>
+            <div className="text-[#E8E6E1] font-bold text-base leading-tight">D-Ploeg Veluwsekant</div>
+            <div className="text-[#6B7280] text-[11px] uppercase tracking-wider">Alleen-lezen</div>
+          </div>
         </div>
         <button
           onClick={onGoToLogin}
@@ -341,8 +347,8 @@ function LoginScherm({ api, onLoggedIn, onGuest }) {
     <div className="min-h-screen bg-[#101216] flex items-center justify-center p-6">
       <div className="w-full max-w-sm">
         <div className="flex items-center gap-3 mb-8 justify-center">
-          <div className="w-11 h-11 rounded-lg bg-[#B5483D] flex items-center justify-center flex-shrink-0">
-            <span className="text-[#101216] font-bold text-lg">D</span>
+          <div className="w-11 h-11 rounded-lg bg-[#B5483D] flex items-center justify-center flex-shrink-0 overflow-hidden">
+            <img src={LOGO_URL} alt="Logo" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = "none"; e.target.parentElement.innerHTML = '<span class="text-[#101216] font-bold text-lg">D</span>'; }} />
           </div>
           <div>
             <div className="text-[#E8E6E1] font-bold text-lg leading-tight tracking-tight">D-Ploeg Veluwsekant</div>
@@ -722,8 +728,8 @@ function AdminApp({ api, onLogout, onViewGuest }) {
     <div className="min-h-screen bg-[#101216]">
       <div className="sticky top-0 z-10 bg-[#101216]/95 backdrop-blur border-b border-[#1F222A] px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-md bg-[#B5483D] flex items-center justify-center flex-shrink-0">
-            <span className="text-[#101216] font-bold text-sm">D</span>
+          <div className="w-8 h-8 rounded-md bg-[#B5483D] flex items-center justify-center flex-shrink-0 overflow-hidden">
+            <img src={LOGO_URL} alt="Logo" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = "none"; e.target.parentElement.innerHTML = '<span class="text-[#101216] font-bold text-sm">D</span>'; }} />
           </div>
           <div className="text-[#E8E6E1] font-bold text-sm leading-tight">D-Ploeg Veluwsekant</div>
         </div>

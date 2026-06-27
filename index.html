@@ -14,63 +14,97 @@
   ::-webkit-scrollbar { height: 6px; width: 6px; }
   ::-webkit-scrollbar-thumb { background: #2A2E37; border-radius: 3px; }
 
-  /* ===== Licht thema — volgt de systeeminstelling van het toestel =====
+  /* ===== Licht thema =====
+     Standaard volgt dit de systeeminstelling van het toestel (prefers-color-scheme).
+     Zodra iemand op de zon/maan-knop tikt, zet React het data-thema attribuut op
+     <html>, en dat overruled de systeeminstelling — ongeacht wat het toestel zegt.
      Kazerne-dagrapport stijl: warm gebroken wit in plaats van kil kantoor-wit,
      met dezelfde functie-kleuren (B/M/CTS/CL/OL) als anker tussen beide thema's. */
   @media (prefers-color-scheme: light) {
-    body { background: #F2EFE9 !important; }
-    ::-webkit-scrollbar-thumb { background: #D4CCC0 !important; }
-
-    /* Achtergronden */
-    .bg-\[\#101216\] { background-color: #F2EFE9 !important; }
-    .bg-\[\#16181D\] { background-color: #FFFFFF !important; }
-    .bg-\[\#1A1D23\] { background-color: #ECE7DE !important; }
-    .bg-\[\#1C1F26\] { background-color: #FFFFFF !important; }
-    .bg-\[\#1C2018\] { background-color: #EAF1EC !important; }
-    .bg-\[\#1F1B12\] { background-color: #FBF3E3 !important; }
-    .bg-\[\#1F3A2E\] { background-color: #DCEFE2 !important; }
-    .bg-\[\#2A2E37\] { background-color: #E3DCD0 !important; }
-
-    /* Randen */
-    .border-\[\#1F222A\] { border-color: #DCD4C6 !important; }
-    .border-\[\#262A33\] { border-color: #DCD4C6 !important; }
-    .border-\[\#2A2E37\] { border-color: #D4CCC0 !important; }
-    .border-\[\#2E323C\] { border-color: #C9C0B2 !important; }
-    .border-\[\#3A3320\] { border-color: #E8D9A8 !important; }
-    .border-\[\#3D6B4C\] { border-color: #8FBFA0 !important; }
-    .border-\[\#1A1D23\] { border-color: #E3DCD0 !important; }
-
-    /* Hoofdtekst (was lichtgrijs op donker, wordt donker op licht) */
-    .text-\[\#E8E6E1\] { color: #2B2620 !important; }
-
-    /* Secundaire / gedempte tekst */
-    .text-\[\#8A8F9C\] { color: #6B6557 !important; }
-    .text-\[\#6B7280\] { color: #7A7264 !important; }
-    .text-\[\#5A5F68\] { color: #8C8474 !important; }
-    .text-\[\#4A4F58\] { color: #A39C8C !important; }
-    .text-\[\#3A3E47\] { color: #B8AF9E !important; }
-    .text-\[\#A8ABB3\] { color: #5C5648 !important; }
-    .text-\[\#8AA0B5\] { color: #5C7187 !important; }
-
-    /* Status-kleuren blijven herkenbaar maar iets ingehouden voor lichte achtergrond */
-    .text-\[\#E08A7A\] { color: #B5483D !important; }
-    .text-\[\#E0A33D\] { color: #9C6B12 !important; }
-    .text-\[\#7FAE8C\] { color: #3D7A52 !important; }
-    .text-\[\#A8D5B5\] { color: #2D6B41 !important; }
-    .text-\[\#C9A24B\] { color: #9C7A1F !important; }
-    .text-\[\#DDB35E\] { color: #8A6A1A !important; }
-
-    /* Inputs/knoppen die op donker een lichte focus-rand hadden */
-    .focus\:border-\[\#B5483D\]:focus { border-color: #B5483D !important; }
-    .hover\:bg-\[\#343945\]:hover { background-color: #D8CFC0 !important; }
-    .hover\:text-\[\#E8E6E1\]:hover { color: #2B2620 !important; }
-    .hover\:text-\[\#8A8F9C\]:hover { color: #6B6557 !important; }
-    .hover\:text-\[\#DDB35E\]:hover { color: #8A6A1A !important; }
-    .hover\:text-\[\#A8D5B5\]:hover { color: #2D6B41 !important; }
-    .hover\:text-\[\#E08A7A\]:hover { color: #B5483D !important; }
+    html:not([data-thema="donker"]) body { background: #F2EFE9 !important; }
+    html:not([data-thema="donker"]) ::-webkit-scrollbar-thumb { background: #D4CCC0 !important; }
   }
+  html[data-thema="licht"] body { background: #F2EFE9 !important; }
+  html[data-thema="licht"] ::-webkit-scrollbar-thumb { background: #D4CCC0 !important; }
+
+  @media (prefers-color-scheme: light) {
+    html:not([data-thema="donker"]) .bg-\[\#101216\] { background-color: #F2EFE9 !important; }
+    html:not([data-thema="donker"]) .bg-\[\#16181D\] { background-color: #FFFFFF !important; }
+    html:not([data-thema="donker"]) .bg-\[\#1A1D23\] { background-color: #ECE7DE !important; }
+    html:not([data-thema="donker"]) .bg-\[\#1C1F26\] { background-color: #FFFFFF !important; }
+    html:not([data-thema="donker"]) .bg-\[\#1C2018\] { background-color: #EAF1EC !important; }
+    html:not([data-thema="donker"]) .bg-\[\#1F1B12\] { background-color: #FBF3E3 !important; }
+    html:not([data-thema="donker"]) .bg-\[\#1F3A2E\] { background-color: #DCEFE2 !important; }
+    html:not([data-thema="donker"]) .bg-\[\#2A2E37\] { background-color: #E3DCD0 !important; }
+    html:not([data-thema="donker"]) .border-\[\#1F222A\] { border-color: #DCD4C6 !important; }
+    html:not([data-thema="donker"]) .border-\[\#262A33\] { border-color: #DCD4C6 !important; }
+    html:not([data-thema="donker"]) .border-\[\#2A2E37\] { border-color: #D4CCC0 !important; }
+    html:not([data-thema="donker"]) .border-\[\#2E323C\] { border-color: #C9C0B2 !important; }
+    html:not([data-thema="donker"]) .border-\[\#3A3320\] { border-color: #E8D9A8 !important; }
+    html:not([data-thema="donker"]) .border-\[\#3D6B4C\] { border-color: #8FBFA0 !important; }
+    html:not([data-thema="donker"]) .border-\[\#1A1D23\] { border-color: #E3DCD0 !important; }
+    html:not([data-thema="donker"]) .text-\[\#E8E6E1\] { color: #2B2620 !important; }
+    html:not([data-thema="donker"]) .text-\[\#8A8F9C\] { color: #6B6557 !important; }
+    html:not([data-thema="donker"]) .text-\[\#6B7280\] { color: #7A7264 !important; }
+    html:not([data-thema="donker"]) .text-\[\#5A5F68\] { color: #8C8474 !important; }
+    html:not([data-thema="donker"]) .text-\[\#4A4F58\] { color: #A39C8C !important; }
+    html:not([data-thema="donker"]) .text-\[\#3A3E47\] { color: #B8AF9E !important; }
+    html:not([data-thema="donker"]) .text-\[\#A8ABB3\] { color: #5C5648 !important; }
+    html:not([data-thema="donker"]) .text-\[\#8AA0B5\] { color: #5C7187 !important; }
+    html:not([data-thema="donker"]) .text-\[\#E08A7A\] { color: #B5483D !important; }
+    html:not([data-thema="donker"]) .text-\[\#E0A33D\] { color: #9C6B12 !important; }
+    html:not([data-thema="donker"]) .text-\[\#7FAE8C\] { color: #3D7A52 !important; }
+    html:not([data-thema="donker"]) .text-\[\#A8D5B5\] { color: #2D6B41 !important; }
+    html:not([data-thema="donker"]) .text-\[\#C9A24B\] { color: #9C7A1F !important; }
+    html:not([data-thema="donker"]) .text-\[\#DDB35E\] { color: #8A6A1A !important; }
+    html:not([data-thema="donker"]) .focus\:border-\[\#B5483D\]:focus { border-color: #B5483D !important; }
+    html:not([data-thema="donker"]) .hover\:bg-\[\#343945\]:hover { background-color: #D8CFC0 !important; }
+    html:not([data-thema="donker"]) .hover\:text-\[\#E8E6E1\]:hover { color: #2B2620 !important; }
+    html:not([data-thema="donker"]) .hover\:text-\[\#8A8F9C\]:hover { color: #6B6557 !important; }
+    html:not([data-thema="donker"]) .hover\:text-\[\#DDB35E\]:hover { color: #8A6A1A !important; }
+    html:not([data-thema="donker"]) .hover\:text-\[\#A8D5B5\]:hover { color: #2D6B41 !important; }
+    html:not([data-thema="donker"]) .hover\:text-\[\#E08A7A\]:hover { color: #B5483D !important; }
+  }
+
+  html[data-thema="licht"] .bg-\[\#101216\] { background-color: #F2EFE9 !important; }
+  html[data-thema="licht"] .bg-\[\#16181D\] { background-color: #FFFFFF !important; }
+  html[data-thema="licht"] .bg-\[\#1A1D23\] { background-color: #ECE7DE !important; }
+  html[data-thema="licht"] .bg-\[\#1C1F26\] { background-color: #FFFFFF !important; }
+  html[data-thema="licht"] .bg-\[\#1C2018\] { background-color: #EAF1EC !important; }
+  html[data-thema="licht"] .bg-\[\#1F1B12\] { background-color: #FBF3E3 !important; }
+  html[data-thema="licht"] .bg-\[\#1F3A2E\] { background-color: #DCEFE2 !important; }
+  html[data-thema="licht"] .bg-\[\#2A2E37\] { background-color: #E3DCD0 !important; }
+  html[data-thema="licht"] .border-\[\#1F222A\] { border-color: #DCD4C6 !important; }
+  html[data-thema="licht"] .border-\[\#262A33\] { border-color: #DCD4C6 !important; }
+  html[data-thema="licht"] .border-\[\#2A2E37\] { border-color: #D4CCC0 !important; }
+  html[data-thema="licht"] .border-\[\#2E323C\] { border-color: #C9C0B2 !important; }
+  html[data-thema="licht"] .border-\[\#3A3320\] { border-color: #E8D9A8 !important; }
+  html[data-thema="licht"] .border-\[\#3D6B4C\] { border-color: #8FBFA0 !important; }
+  html[data-thema="licht"] .border-\[\#1A1D23\] { border-color: #E3DCD0 !important; }
+  html[data-thema="licht"] .text-\[\#E8E6E1\] { color: #2B2620 !important; }
+  html[data-thema="licht"] .text-\[\#8A8F9C\] { color: #6B6557 !important; }
+  html[data-thema="licht"] .text-\[\#6B7280\] { color: #7A7264 !important; }
+  html[data-thema="licht"] .text-\[\#5A5F68\] { color: #8C8474 !important; }
+  html[data-thema="licht"] .text-\[\#4A4F58\] { color: #A39C8C !important; }
+  html[data-thema="licht"] .text-\[\#3A3E47\] { color: #B8AF9E !important; }
+  html[data-thema="licht"] .text-\[\#A8ABB3\] { color: #5C5648 !important; }
+  html[data-thema="licht"] .text-\[\#8AA0B5\] { color: #5C7187 !important; }
+  html[data-thema="licht"] .text-\[\#E08A7A\] { color: #B5483D !important; }
+  html[data-thema="licht"] .text-\[\#E0A33D\] { color: #9C6B12 !important; }
+  html[data-thema="licht"] .text-\[\#7FAE8C\] { color: #3D7A52 !important; }
+  html[data-thema="licht"] .text-\[\#A8D5B5\] { color: #2D6B41 !important; }
+  html[data-thema="licht"] .text-\[\#C9A24B\] { color: #9C7A1F !important; }
+  html[data-thema="licht"] .text-\[\#DDB35E\] { color: #8A6A1A !important; }
+  html[data-thema="licht"] .focus\:border-\[\#B5483D\]:focus { border-color: #B5483D !important; }
+  html[data-thema="licht"] .hover\:bg-\[\#343945\]:hover { background-color: #D8CFC0 !important; }
+  html[data-thema="licht"] .hover\:text-\[\#E8E6E1\]:hover { color: #2B2620 !important; }
+  html[data-thema="licht"] .hover\:text-\[\#8A8F9C\]:hover { color: #6B6557 !important; }
+  html[data-thema="licht"] .hover\:text-\[\#DDB35E\]:hover { color: #8A6A1A !important; }
+  html[data-thema="licht"] .hover\:text-\[\#A8D5B5\]:hover { color: #2D6B41 !important; }
+  html[data-thema="licht"] .hover\:text-\[\#E08A7A\]:hover { color: #B5483D !important; }
 </style>
 <script>
+
   window.addEventListener('error', function (e) {
     var el = document.getElementById('error-box');
     if (!el) {
@@ -89,20 +123,56 @@
 <script type="text/babel" data-presets="react">
 const { useState, useEffect, useMemo, useCallback } = React;
 
-// Detecteert of het systeem licht of donker staat — alleen nodig voor de paar
-// plekken waar kleuren inline via JS worden bepaald (CSS @media dekt de rest).
-function useSysteemThema() {
-  const [licht, setLicht] = useState(
-    () => window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches
-  );
+// Beheert het thema: standaard volgt dit de systeeminstelling van het toestel,
+// maar zodra iemand handmatig wisselt (via ThemaKnop) wordt die keuze onthouden
+// in localStorage en overruled die voortaan de systeeminstelling.
+const THEMA_OPSLAG_KEY = "rooster_thema";
+
+function useThema() {
+  const [thema, setThemaState] = useState(() => {
+    const opgeslagen = localStorage.getItem(THEMA_OPSLAG_KEY);
+    if (opgeslagen === "licht" || opgeslagen === "donker") return opgeslagen;
+    const systeemLicht = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
+    return systeemLicht ? "licht" : "donker";
+  });
+
   useEffect(() => {
+    document.documentElement.setAttribute("data-thema", thema);
+  }, [thema]);
+
+  // Als er nog geen handmatige keuze is opgeslagen, blijf de systeeminstelling volgen.
+  useEffect(() => {
+    if (localStorage.getItem(THEMA_OPSLAG_KEY)) return;
     if (!window.matchMedia) return;
     const mq = window.matchMedia("(prefers-color-scheme: light)");
-    const handler = (e) => setLicht(e.matches);
+    const handler = (e) => setThemaState(e.matches ? "licht" : "donker");
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
   }, []);
-  return licht;
+
+  function wisselThema() {
+    const nieuw = thema === "licht" ? "donker" : "licht";
+    localStorage.setItem(THEMA_OPSLAG_KEY, nieuw);
+    setThemaState(nieuw);
+  }
+
+  return { thema, licht: thema === "licht", wisselThema };
+}
+
+function ThemaKnop({ licht, onClick, compact }) {
+  return (
+    <button
+      onClick={onClick}
+      title={licht ? "Schakel naar donker thema" : "Schakel naar licht thema"}
+      className={
+        "flex items-center justify-center rounded-lg border transition-colors flex-shrink-0 " +
+        (compact ? "w-8 h-8 text-sm" : "w-9 h-9 text-base") + " " +
+        "border-[#2A2E37] text-[#8A8F9C] hover:text-[#E8E6E1]"
+      }
+    >
+      {licht ? "🌙" : "☀️"}
+    </button>
+  );
 }
 
 // ====== CONFIG ======
@@ -412,6 +482,7 @@ function GastWeergave({ onGoToLogin }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const weerPerDatum = useWeerAlmere();
+  const { licht, wisselThema } = useThema();
 
   useEffect(() => {
     fetch(API_BASE + "/api/rooster")
@@ -446,12 +517,15 @@ function GastWeergave({ onGoToLogin }) {
             <div className="text-[#6B7280] text-[11px] uppercase tracking-wider">Alleen-lezen</div>
           </div>
         </div>
-        <button
-          onClick={onGoToLogin}
-          className="text-[11px] font-medium text-[#8A8F9C] hover:text-[#E8E6E1] border border-[#2A2E37] rounded-lg px-3 py-1.5 flex-shrink-0"
-        >
-          Inloggen als beheerder
-        </button>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <ThemaKnop licht={licht} onClick={wisselThema} compact />
+          <button
+            onClick={onGoToLogin}
+            className="text-[11px] font-medium text-[#8A8F9C] hover:text-[#E8E6E1] border border-[#2A2E37] rounded-lg px-3 py-1.5 flex-shrink-0"
+          >
+            Inloggen als beheerder
+          </button>
+        </div>
       </div>
       <div className="px-4 py-4 max-w-2xl mx-auto">
         <Dagstaat dienst={dienstVandaag} personMap={personMap} weerPerDatum={weerPerDatum} />
@@ -477,6 +551,7 @@ function LoginScherm({ api, onLoggedIn, onGuest }) {
   const [wachtwoord, setWachtwoord] = useState("");
   const [error, setError] = useState("");
   const [bezig, setBezig] = useState(false);
+  const { licht, wisselThema } = useThema();
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -503,6 +578,7 @@ function LoginScherm({ api, onLoggedIn, onGuest }) {
             <div className="text-[#E8E6E1] font-bold text-lg leading-tight tracking-tight">D-Ploeg Veluwsekant</div>
             <div className="text-[#6B7280] text-xs uppercase tracking-widest">Beheer</div>
           </div>
+          <ThemaKnop licht={licht} onClick={wisselThema} />
         </div>
         <form onSubmit={handleSubmit} className="bg-[#16181D] border border-[#262A33] rounded-xl p-6 space-y-4">
           <div>
@@ -529,7 +605,7 @@ function TeamTab({ api, refreshKey, bumpRefresh }) {
   const [personen, setPersonen] = useState([]);
   const [nieuweNaam, setNieuweNaam] = useState("");
   const [laden, setLaden] = useState(true);
-  const licht = useSysteemThema();
+  const { licht } = useThema();
 
   useEffect(() => {
     setLaden(true);
@@ -869,6 +945,7 @@ function AdminApp({ api, onLogout, onViewGuest }) {
   const [tab, setTab] = useState("team");
   const [refreshKey, setRefreshKey] = useState(0);
   const bumpRefresh = () => setRefreshKey((k) => k + 1);
+  const { licht, wisselThema } = useThema();
 
   const tabs = [
     { key: "team", label: "Team" },
@@ -885,6 +962,7 @@ function AdminApp({ api, onLogout, onViewGuest }) {
           <div className="text-[#E8E6E1] font-bold text-sm leading-tight">D-Ploeg Veluwsekant</div>
         </div>
         <div className="flex items-center gap-3">
+          <ThemaKnop licht={licht} onClick={wisselThema} compact />
           <button onClick={onViewGuest} className="text-[#8A8F9C] hover:text-[#E8E6E1] text-xs">Gast-weergave</button>
           <button onClick={onLogout} className="text-[#8A8F9C] hover:text-[#E08A7A] text-xs">Uitloggen</button>
         </div>

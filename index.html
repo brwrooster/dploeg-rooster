@@ -485,10 +485,15 @@ function GastWeergave({ onGoToLogin }) {
   const { licht, wisselThema } = useThema();
 
   useEffect(() => {
-    fetch(API_BASE + "/api/rooster")
-      .then((r) => r.json())
-      .then(setData)
-      .catch(() => setError("Kon het rooster niet laden."));
+    function haalData() {
+      fetch(API_BASE + "/api/rooster")
+        .then((r) => r.json())
+        .then((d) => { setData(d); setError(""); })
+        .catch(() => setError("Kon het rooster niet laden."));
+    }
+    haalData();
+    const interval = setInterval(haalData, 2 * 60 * 1000); // elke 2 minuten
+    return () => clearInterval(interval);
   }, []);
 
   const personMap = useMemo(() => {
@@ -611,6 +616,14 @@ function TeamTab({ api, refreshKey, bumpRefresh }) {
     setLaden(true);
     api.call("/api/personen").then((d) => setPersonen(d.personen)).finally(() => setLaden(false));
   }, [refreshKey]);
+
+  // Stille auto-refresh elke 2 minuten — geen laad-indicator, geen verstoring van open invoervelden.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      api.call("/api/personen").then((d) => setPersonen(d.personen)).catch(() => {});
+    }, 2 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [api]);
 
   async function addPersoon() {
     const naam = nieuweNaam.trim();
@@ -745,6 +758,17 @@ function DienstenTab({ api, refreshKey, bumpRefresh }) {
       .then(([d, p]) => { setDiensten(d.diensten); setPersonen(p.personen); })
       .finally(() => setLaden(false));
   }, [refreshKey]);
+
+  // Stille auto-refresh elke 2 minuten — geen laad-indicator, geen verstoring van
+  // openstaande bewerkmodus (editId) of ingevoerde datums.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      Promise.all([api.call("/api/diensten"), api.call("/api/personen")])
+        .then(([d, p]) => { setDiensten(d.diensten); setPersonen(p.personen); })
+        .catch(() => {});
+    }, 2 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [api]);
 
   const personMap = useMemo(() => {
     const m = {};

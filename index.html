@@ -13,6 +13,62 @@
   body { background: #101216; margin: 0; }
   ::-webkit-scrollbar { height: 6px; width: 6px; }
   ::-webkit-scrollbar-thumb { background: #2A2E37; border-radius: 3px; }
+
+  /* ===== Licht thema — volgt de systeeminstelling van het toestel =====
+     Kazerne-dagrapport stijl: warm gebroken wit in plaats van kil kantoor-wit,
+     met dezelfde functie-kleuren (B/M/CTS/CL/OL) als anker tussen beide thema's. */
+  @media (prefers-color-scheme: light) {
+    body { background: #F2EFE9 !important; }
+    ::-webkit-scrollbar-thumb { background: #D4CCC0 !important; }
+
+    /* Achtergronden */
+    .bg-\[\#101216\] { background-color: #F2EFE9 !important; }
+    .bg-\[\#16181D\] { background-color: #FFFFFF !important; }
+    .bg-\[\#1A1D23\] { background-color: #ECE7DE !important; }
+    .bg-\[\#1C1F26\] { background-color: #FFFFFF !important; }
+    .bg-\[\#1C2018\] { background-color: #EAF1EC !important; }
+    .bg-\[\#1F1B12\] { background-color: #FBF3E3 !important; }
+    .bg-\[\#1F3A2E\] { background-color: #DCEFE2 !important; }
+    .bg-\[\#2A2E37\] { background-color: #E3DCD0 !important; }
+
+    /* Randen */
+    .border-\[\#1F222A\] { border-color: #DCD4C6 !important; }
+    .border-\[\#262A33\] { border-color: #DCD4C6 !important; }
+    .border-\[\#2A2E37\] { border-color: #D4CCC0 !important; }
+    .border-\[\#2E323C\] { border-color: #C9C0B2 !important; }
+    .border-\[\#3A3320\] { border-color: #E8D9A8 !important; }
+    .border-\[\#3D6B4C\] { border-color: #8FBFA0 !important; }
+    .border-\[\#1A1D23\] { border-color: #E3DCD0 !important; }
+
+    /* Hoofdtekst (was lichtgrijs op donker, wordt donker op licht) */
+    .text-\[\#E8E6E1\] { color: #2B2620 !important; }
+
+    /* Secundaire / gedempte tekst */
+    .text-\[\#8A8F9C\] { color: #6B6557 !important; }
+    .text-\[\#6B7280\] { color: #7A7264 !important; }
+    .text-\[\#5A5F68\] { color: #8C8474 !important; }
+    .text-\[\#4A4F58\] { color: #A39C8C !important; }
+    .text-\[\#3A3E47\] { color: #B8AF9E !important; }
+    .text-\[\#A8ABB3\] { color: #5C5648 !important; }
+    .text-\[\#8AA0B5\] { color: #5C7187 !important; }
+
+    /* Status-kleuren blijven herkenbaar maar iets ingehouden voor lichte achtergrond */
+    .text-\[\#E08A7A\] { color: #B5483D !important; }
+    .text-\[\#E0A33D\] { color: #9C6B12 !important; }
+    .text-\[\#7FAE8C\] { color: #3D7A52 !important; }
+    .text-\[\#A8D5B5\] { color: #2D6B41 !important; }
+    .text-\[\#C9A24B\] { color: #9C7A1F !important; }
+    .text-\[\#DDB35E\] { color: #8A6A1A !important; }
+
+    /* Inputs/knoppen die op donker een lichte focus-rand hadden */
+    .focus\:border-\[\#B5483D\]:focus { border-color: #B5483D !important; }
+    .hover\:bg-\[\#343945\]:hover { background-color: #D8CFC0 !important; }
+    .hover\:text-\[\#E8E6E1\]:hover { color: #2B2620 !important; }
+    .hover\:text-\[\#8A8F9C\]:hover { color: #6B6557 !important; }
+    .hover\:text-\[\#DDB35E\]:hover { color: #8A6A1A !important; }
+    .hover\:text-\[\#A8D5B5\]:hover { color: #2D6B41 !important; }
+    .hover\:text-\[\#E08A7A\]:hover { color: #B5483D !important; }
+  }
 </style>
 <script>
   window.addEventListener('error', function (e) {
@@ -32,6 +88,22 @@
 
 <script type="text/babel" data-presets="react">
 const { useState, useEffect, useMemo, useCallback } = React;
+
+// Detecteert of het systeem licht of donker staat — alleen nodig voor de paar
+// plekken waar kleuren inline via JS worden bepaald (CSS @media dekt de rest).
+function useSysteemThema() {
+  const [licht, setLicht] = useState(
+    () => window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches
+  );
+  useEffect(() => {
+    if (!window.matchMedia) return;
+    const mq = window.matchMedia("(prefers-color-scheme: light)");
+    const handler = (e) => setLicht(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return licht;
+}
 
 // ====== CONFIG ======
 const API_BASE = window.ROOSTER_API_BASE || "https://dploeg-rooster.richard-bos.workers.dev";
@@ -457,6 +529,7 @@ function TeamTab({ api, refreshKey, bumpRefresh }) {
   const [personen, setPersonen] = useState([]);
   const [nieuweNaam, setNieuweNaam] = useState("");
   const [laden, setLaden] = useState(true);
+  const licht = useSysteemThema();
 
   useEffect(() => {
     setLaden(true);
@@ -555,12 +628,12 @@ function TeamTab({ api, refreshKey, bumpRefresh }) {
                   const actiefF = p.functies.find((x) => x.code === f.code);
                   const isReserve = actiefF && actiefF.prioriteit === "reserve";
                   return (
-                    <div key={f.code} className="flex items-stretch rounded-md overflow-hidden border" style={{ borderColor: actiefF ? f.color + "66" : "#2A2E37" }}>
-                      <button onClick={() => toggleFunctie(p, f.code)} className="text-xs font-medium px-2.5 py-1.5" style={actiefF ? { background: f.color + "22", color: f.color } : { background: "#1A1D23", color: "#5A5F68" }}>
+                    <div key={f.code} className="flex items-stretch rounded-md overflow-hidden border" style={{ borderColor: actiefF ? f.color + "66" : (licht ? "#D4CCC0" : "#2A2E37") }}>
+                      <button onClick={() => toggleFunctie(p, f.code)} className="text-xs font-medium px-2.5 py-1.5" style={actiefF ? { background: f.color + "22", color: f.color } : { background: licht ? "#ECE7DE" : "#1A1D23", color: licht ? "#8C8474" : "#5A5F68" }}>
                         {f.code} · {f.label}
                       </button>
                       {actiefF && (
-                        <button onClick={() => togglePrioriteit(p, f.code)} className="text-[10px] font-semibold px-2 py-1.5 border-l" style={isReserve ? { background: "#1A1D23", color: "#8A8F9C", borderColor: f.color + "40" } : { background: f.color + "33", color: f.color, borderColor: f.color + "40" }}>
+                        <button onClick={() => togglePrioriteit(p, f.code)} className="text-[10px] font-semibold px-2 py-1.5 border-l" style={isReserve ? { background: licht ? "#ECE7DE" : "#1A1D23", color: licht ? "#6B6557" : "#8A8F9C", borderColor: f.color + "40" } : { background: f.color + "33", color: f.color, borderColor: f.color + "40" }}>
                           {isReserve ? "RES" : "VAST"}
                         </button>
                       )}

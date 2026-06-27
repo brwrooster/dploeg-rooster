@@ -67,6 +67,80 @@ function schoonmaakTaakVoor(iso) {
   return SCHOONMAAK_PER_WEEKDAG[dag] || null;
 }
 
+// ---------- Weer (Open-Meteo, Almere) ----------
+// WMO weather codes -> icoon + korte NL-omschrijving
+const WEERCODES = {
+  0: ["☀️", "helder"],
+  1: ["🌤️", "vrijwel onbewolkt"],
+  2: ["⛅", "half bewolkt"],
+  3: ["☁️", "bewolkt"],
+  45: ["🌫️", "mist"],
+  48: ["🌫️", "mist met rijp"],
+  51: ["🌦️", "lichte motregen"],
+  53: ["🌦️", "motregen"],
+  55: ["🌦️", "dichte motregen"],
+  56: ["🌧️", "lichte ijzel"],
+  57: ["🌧️", "ijzel"],
+  61: ["🌧️", "lichte regen"],
+  63: ["🌧️", "regen"],
+  65: ["🌧️", "zware regen"],
+  66: ["🌧️", "lichte ijzelregen"],
+  67: ["🌧️", "ijzelregen"],
+  71: ["🌨️", "lichte sneeuw"],
+  73: ["🌨️", "sneeuw"],
+  75: ["❄️", "zware sneeuwval"],
+  77: ["🌨️", "sneeuwkorrels"],
+  80: ["🌦️", "lichte regenbui"],
+  81: ["🌧️", "regenbui"],
+  82: ["⛈️", "zware regenbui"],
+  85: ["🌨️", "lichte sneeuwbui"],
+  86: ["❄️", "sneeuwbui"],
+  95: ["⛈️", "onweer"],
+  96: ["⛈️", "onweer met hagel"],
+  99: ["⛈️", "zwaar onweer met hagel"],
+};
+
+const WEER_LAT = 52.37;
+const WEER_LON = 5.22;
+
+function useWeerAlmere() {
+  const [weerPerDatum, setWeerPerDatum] = useState({});
+
+  useEffect(() => {
+    const url =
+      "https://api.open-meteo.com/v1/forecast?latitude=" + WEER_LAT + "&longitude=" + WEER_LON +
+      "&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=Europe%2FAmsterdam&forecast_days=16";
+    fetch(url)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.daily || !data.daily.time) return;
+        const m = {};
+        data.daily.time.forEach((datum, i) => {
+          m[datum] = {
+            code: data.daily.weather_code[i],
+            max: Math.round(data.daily.temperature_2m_max[i]),
+            min: Math.round(data.daily.temperature_2m_min[i]),
+          };
+        });
+        setWeerPerDatum(m);
+      })
+      .catch(() => {});
+  }, []);
+
+  return weerPerDatum;
+}
+
+function WeerBadge({ datum, weerPerDatum }) {
+  const w = weerPerDatum[datum];
+  if (!w) return null;
+  const [icoon, tekst] = WEERCODES[w.code] || ["", ""];
+  return (
+    <div className="text-[11px] text-[#8A8F9C] mt-0.5 flex items-center gap-1">
+      <span>{icoon}</span> {w.max}° / {w.min}°{tekst ? ", " + tekst : ""}
+    </div>
+  );
+}
+
 // ---------- API helper ----------
 function useApi() {
   const [token, setToken] = useState(() => sessionStorage.getItem("rooster_token") || null);
@@ -144,7 +218,7 @@ function EmptyState({ title, body }) {
   );
 }
 
-function DienstKaart({ dienst, personMap, beschikbaarMode, onToggleBeschikbaar, onSetAlle }) {
+function DienstKaart({ dienst, personMap, beschikbaarMode, onToggleBeschikbaar, onSetAlle, weerPerDatum }) {
   const heeftTekort = dienst.tekorten && dienst.tekorten.length > 0;
   const taak = schoonmaakTaakVoor(dienst.datum);
   return (
@@ -152,6 +226,7 @@ function DienstKaart({ dienst, personMap, beschikbaarMode, onToggleBeschikbaar, 
       <div className="px-4 py-3 flex items-center justify-between border-b border-[#1F222A] gap-2">
         <div className="min-w-0">
           <div className="font-medium text-[#E8E6E1] text-sm capitalize">{formatDateNL(dienst.datum)}</div>
+          {weerPerDatum && <WeerBadge datum={dienst.datum} weerPerDatum={weerPerDatum} />}
           {taak && (
             <div className="text-[11px] text-[#8AA0B5] mt-0.5 flex items-center gap-1">
               <span>🧹</span> {taak}
@@ -210,7 +285,7 @@ function DienstKaart({ dienst, personMap, beschikbaarMode, onToggleBeschikbaar, 
   );
 }
 
-function Dagstaat({ dienst, personMap }) {
+function Dagstaat({ dienst, personMap, weerPerDatum }) {
   if (!dienst) {
     return (
       <div className="bg-[#16181D] border border-[#2A2E37] rounded-xl p-4 mb-5">
@@ -227,6 +302,7 @@ function Dagstaat({ dienst, personMap }) {
         <div className="min-w-0">
           <div className="text-[10px] uppercase tracking-widest text-[#7FAE8C] font-semibold mb-0.5">Dagstaat · Vandaag</div>
           <div className="text-[#E8E6E1] font-bold text-base capitalize">{formatDateNL(dienst.datum)}</div>
+          {weerPerDatum && <WeerBadge datum={dienst.datum} weerPerDatum={weerPerDatum} />}
           {taak && (
             <div className="text-[12px] text-[#8AA0B5] mt-1 flex items-center gap-1">
               <span>🧹</span> {taak}
@@ -263,6 +339,7 @@ function Dagstaat({ dienst, personMap }) {
 function GastWeergave({ onGoToLogin }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
+  const weerPerDatum = useWeerAlmere();
 
   useEffect(() => {
     fetch(API_BASE + "/api/rooster")
@@ -305,13 +382,13 @@ function GastWeergave({ onGoToLogin }) {
         </button>
       </div>
       <div className="px-4 py-4 max-w-2xl mx-auto">
-        <Dagstaat dienst={dienstVandaag} personMap={personMap} />
+        <Dagstaat dienst={dienstVandaag} personMap={personMap} weerPerDatum={weerPerDatum} />
         {overige.length > 0 && <div className="text-[11px] uppercase tracking-wider text-[#6B7280] mb-2 px-1">Komende diensten</div>}
         {sorted.length === 0 ? (
           <EmptyState title="Nog geen diensten gepland" body="Zodra de beheerder diensten heeft ingedeeld, verschijnen ze hier." />
         ) : (
           <div className="space-y-3 mb-6">
-            {overige.map((d) => <DienstKaart key={d.id} dienst={d} personMap={personMap} />)}
+            {overige.map((d) => <DienstKaart key={d.id} dienst={d} personMap={personMap} weerPerDatum={weerPerDatum} />)}
           </div>
         )}
         {(data.personen || []).length > 0 && (
@@ -511,6 +588,7 @@ function DienstenTab({ api, refreshKey, bumpRefresh }) {
   const [periodeStart, setPeriodeStart] = useState(todayISO());
   const [periodeEinde, setPeriodeEinde] = useState(todayISO());
   const [periodeInterval, setPeriodeInterval] = useState(4);
+  const weerPerDatum = useWeerAlmere();
 
   useEffect(() => {
     setLaden(true);
@@ -649,7 +727,7 @@ function DienstenTab({ api, refreshKey, bumpRefresh }) {
                 </button>
                 <button onClick={() => removeDienst(d.id)} className="text-[#5A5F68] hover:text-[#E08A7A] text-xs">verwijder</button>
               </div>
-              <DienstKaart dienst={d} personMap={personMap} beschikbaarMode={editId === d.id} onToggleBeschikbaar={toggleBeschikbaar} onSetAlle={setAlle} />
+              <DienstKaart dienst={d} personMap={personMap} beschikbaarMode={editId === d.id} onToggleBeschikbaar={toggleBeschikbaar} onSetAlle={setAlle} weerPerDatum={weerPerDatum} />
               {editId !== d.id && (
                 <div className="flex justify-end mt-1.5">
                   <button onClick={() => indelenEen(d.id)} disabled={(d.beschikbaar || []).length === 0} className="text-[11px] font-medium text-[#C9A24B] hover:text-[#DDB35E] disabled:opacity-30">Opnieuw indelen</button>

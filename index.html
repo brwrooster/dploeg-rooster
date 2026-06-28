@@ -102,6 +102,20 @@
   html[data-thema="licht"] .hover\:text-\[\#DDB35E\]:hover { color: #8A6A1A !important; }
   html[data-thema="licht"] .hover\:text-\[\#A8D5B5\]:hover { color: #2D6B41 !important; }
   html[data-thema="licht"] .hover\:text-\[\#E08A7A\]:hover { color: #B5483D !important; }
+
+  /* ===== Print =====
+     Bij afdrukken: verberg alles, toon alleen het print-overzicht (#print-root),
+     altijd in liggende stand met zwarte tekst op wit voor leesbaarheid op papier. */
+  @media print {
+    @page { size: landscape; margin: 10mm; }
+    body * { visibility: hidden; }
+    #print-root, #print-root * { visibility: visible; }
+    #print-root { position: absolute; top: 0; left: 0; width: 100%; background: #fff !important; }
+  }
+  .print-only { display: none; }
+  @media print {
+    .print-only { display: block; }
+  }
 </style>
 <script>
 
@@ -360,9 +374,22 @@ function EmptyState({ title, body }) {
   );
 }
 
-function DienstKaart({ dienst, personMap, beschikbaarMode, onToggleBeschikbaar, onSetAlle, weerPerDatum }) {
+function DienstKaart({ dienst, personMap, beschikbaarMode, onToggleBeschikbaar, onSetAlle, weerPerDatum, onWijzigToewijzing }) {
   const heeftTekort = dienst.tekorten && dienst.tekorten.length > 0;
   const taak = schoonmaakTaakVoor(dienst.datum);
+  const [wijzigSlot, setWijzigSlot] = useState(null); // { code, persoonId } of null
+
+  const handmatigSet = useMemo(() => new Set(dienst.handmatigPersonen || []), [dienst.handmatigPersonen]);
+
+  function kandidatenVoor(code) {
+    const beschikbaarIds = new Set(dienst.beschikbaar || []);
+    const reedsIngedeeld = new Set();
+    FUNCTIE_ORDER.forEach((c) => (dienst.toewijzing?.[c] || []).forEach((pid) => reedsIngedeeld.add(pid)));
+    return Object.values(personMap).filter(
+      (p) => beschikbaarIds.has(p.id) && (p.functies || []).some((f) => f.code === code) && !reedsIngedeeld.has(p.id)
+    );
+  }
+
   return (
     <div className="bg-[#16181D] border border-[#262A33] rounded-xl overflow-hidden">
       <div className="px-4 py-3 flex items-center justify-between border-b border-[#1F222A] gap-2">
@@ -413,11 +440,86 @@ function DienstKaart({ dienst, personMap, beschikbaarMode, onToggleBeschikbaar, 
         <div className="p-3 grid grid-cols-2 gap-2">
           {FUNCTIE_ORDER.map((code) =>
             (dienst.toewijzing?.[code] || []).length > 0 ? (
-              dienst.toewijzing[code].map((pid) => <PersonChip key={code + pid} naam={personMap[pid]?.naam || "?"} code={code} />)
+              dienst.toewijzing[code].map((pid) => {
+                const isHandmatig = handmatigSet.has(pid);
+                const open = wijzigSlot && wijzigSlot.code === code && wijzigSlot.persoonId === pid;
+                return (
+                  <div key={code + pid} className="relative">
+                    <div className="flex items-center gap-1">
+                      <div className="flex-1 min-w-0">
+                        <PersonChip naam={personMap[pid]?.naam || "?"} code={code} />
+                      </div>
+                      {onWijzigToewijzing && (
+                        <button
+                          onClick={() => setWijzigSlot(open ? null : { code, persoonId: pid })}
+                          title="Wijzig deze toewijzing"
+                          className="text-[#5A5F68] hover:text-[#C9A24B] text-xs flex-shrink-0 px-1"
+                        >
+                          ✎
+                        </button>
+                      )}
+                    </div>
+                    {isHandmatig && (
+                      <div className="text-[9px] text-[#C9A24B] mt-0.5 px-1">✋ handmatig aangepast</div>
+                    )}
+                    {open && (
+                      <div className="absolute z-20 mt-1 left-0 right-0 bg-[#16181D] border border-[#2E323C] rounded-lg shadow-xl p-1.5 space-y-1">
+                        {kandidatenVoor(code).length === 0 ? (
+                          <div className="text-[11px] text-[#5A5F68] px-2 py-1.5">Geen andere bevoegde mensen beschikbaar.</div>
+                        ) : (
+                          kandidatenVoor(code).map((kp) => (
+                            <button
+                              key={kp.id}
+                              onClick={() => { onWijzigToewijzing(dienst.id, code, pid, kp.id); setWijzigSlot(null); }}
+                              className="w-full text-left text-[12px] text-[#E8E6E1] hover:bg-[#1F222A] rounded-md px-2 py-1.5"
+                            >
+                              {kp.naam}
+                            </button>
+                          ))
+                        )}
+                        <button onClick={() => setWijzigSlot(null)} className="w-full text-center text-[11px] text-[#6B7280] hover:text-[#8A8F9C] pt-1">
+                          Annuleren
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
             ) : (
-              <div key={code} className="flex items-center gap-2 rounded-lg px-3 py-2 bg-[#1A1D23] border border-dashed border-[#3A3320]">
-                <FunctieBadge code={code} />
-                <span className="text-[#6B7280] text-xs italic">{dienst.toewijzing ? "niet ingevuld" : "nog niet ingedeeld"}</span>
+              <div key={code} className="relative">
+                <div className="flex items-center gap-2 rounded-lg px-3 py-2 bg-[#1A1D23] border border-dashed border-[#3A3320]">
+                  <FunctieBadge code={code} />
+                  <span className="text-[#6B7280] text-xs italic flex-1">{dienst.toewijzing ? "niet ingevuld" : "nog niet ingedeeld"}</span>
+                  {onWijzigToewijzing && dienst.toewijzing && (
+                    <button
+                      onClick={() => setWijzigSlot(wijzigSlot && wijzigSlot.code === code && !wijzigSlot.persoonId ? null : { code, persoonId: null })}
+                      title="Vul deze plek handmatig in"
+                      className="text-[#5A5F68] hover:text-[#C9A24B] text-xs flex-shrink-0"
+                    >
+                      ✎
+                    </button>
+                  )}
+                </div>
+                {wijzigSlot && wijzigSlot.code === code && !wijzigSlot.persoonId && (
+                  <div className="absolute z-20 mt-1 left-0 right-0 bg-[#16181D] border border-[#2E323C] rounded-lg shadow-xl p-1.5 space-y-1">
+                    {kandidatenVoor(code).length === 0 ? (
+                      <div className="text-[11px] text-[#5A5F68] px-2 py-1.5">Geen bevoegde mensen beschikbaar.</div>
+                    ) : (
+                      kandidatenVoor(code).map((kp) => (
+                        <button
+                          key={kp.id}
+                          onClick={() => { onWijzigToewijzing(dienst.id, code, null, kp.id); setWijzigSlot(null); }}
+                          className="w-full text-left text-[12px] text-[#E8E6E1] hover:bg-[#1F222A] rounded-md px-2 py-1.5"
+                        >
+                          {kp.naam}
+                        </button>
+                      ))
+                    )}
+                    <button onClick={() => setWijzigSlot(null)} className="w-full text-center text-[11px] text-[#6B7280] hover:text-[#8A8F9C] pt-1">
+                      Annuleren
+                    </button>
+                  </div>
+                )}
               </div>
             )
           )}
@@ -524,6 +626,7 @@ function GastWeergave({ onGoToLogin }) {
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
           <ThemaKnop licht={licht} onClick={wisselThema} compact />
+          <PrintKnop diensten={data.diensten || []} personen={data.personen || []} />
           <button
             onClick={onGoToLogin}
             className="text-[11px] font-medium text-[#8A8F9C] hover:text-[#E8E6E1] border border-[#2A2E37] rounded-lg px-3 py-1.5 flex-shrink-0"
@@ -832,7 +935,7 @@ function DienstenTab({ api, refreshKey, bumpRefresh }) {
     try {
       const result = await api.call("/api/diensten/" + dienstId + "/indelen", { method: "POST" });
       setDiensten((prev) =>
-        prev.map((d) => (d.id === dienstId ? { ...d, toewijzing: result.toewijzing, tekorten: result.tekorten } : d))
+        prev.map((d) => (d.id === dienstId ? { ...d, toewijzing: result.toewijzing, tekorten: result.tekorten, handmatigPersonen: [] } : d))
       );
     } catch (e) {
       alert(e.message);
@@ -844,6 +947,17 @@ function DienstenTab({ api, refreshKey, bumpRefresh }) {
       bumpRefresh();
     } catch (e) { alert(e.message); }
   }
+  async function wijzigToewijzing(dienstId, functieCode, oudePersoonId, nieuwePersoonId) {
+    try {
+      await api.call("/api/diensten/" + dienstId + "/wijzig-toewijzing", {
+        method: "POST",
+        body: JSON.stringify({ functie_code: functieCode, oude_persoon_id: oudePersoonId, nieuwe_persoon_id: nieuwePersoonId }),
+      });
+      bumpRefresh();
+    } catch (e) {
+      alert(e.message);
+    }
+  }
 
   if (laden) return <div className="text-[#6B7280] text-sm">Laden...</div>;
 
@@ -851,9 +965,12 @@ function DienstenTab({ api, refreshKey, bumpRefresh }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-[#E8E6E1] font-semibold text-base">Diensten</h2>
-        {diensten.length > 0 && (
-          <button onClick={indelenAlles} disabled={personen.length === 0} className="text-[11px] font-medium text-[#101216] bg-[#C9A24B] hover:bg-[#B8923F] disabled:opacity-30 rounded-lg px-3 py-1.5">Indelen</button>
-        )}
+        <div className="flex items-center gap-2">
+          <PrintKnop diensten={diensten} personen={personen} />
+          {diensten.length > 0 && (
+            <button onClick={indelenAlles} disabled={personen.length === 0} className="text-[11px] font-medium text-[#101216] bg-[#C9A24B] hover:bg-[#B8923F] disabled:opacity-30 rounded-lg px-3 py-1.5">Indelen</button>
+          )}
+        </div>
       </div>
 
       <div className="flex gap-1 bg-[#16181D] border border-[#262A33] rounded-xl p-1">
@@ -900,7 +1017,7 @@ function DienstenTab({ api, refreshKey, bumpRefresh }) {
                 </button>
                 <button onClick={() => removeDienst(d.id)} className="text-[#5A5F68] hover:text-[#E08A7A] text-xs">verwijder</button>
               </div>
-              <DienstKaart dienst={d} personMap={personMap} beschikbaarMode={editId === d.id} onToggleBeschikbaar={toggleBeschikbaar} onSetAlle={setAlle} weerPerDatum={weerPerDatum} />
+              <DienstKaart dienst={d} personMap={personMap} beschikbaarMode={editId === d.id} onToggleBeschikbaar={toggleBeschikbaar} onSetAlle={setAlle} weerPerDatum={weerPerDatum} onWijzigToewijzing={wijzigToewijzing} />
               {editId !== d.id && (
                 <div className="flex justify-end mt-1.5">
                   <button onClick={() => indelenEen(d.id)} disabled={(d.beschikbaar || []).length === 0} className="text-[11px] font-medium text-[#C9A24B] hover:text-[#DDB35E] disabled:opacity-30">Opnieuw indelen</button>
@@ -913,6 +1030,143 @@ function DienstenTab({ api, refreshKey, bumpRefresh }) {
 
       {personen.length > 0 && diensten.length > 0 && <VerdelingTabel personen={personen} diensten={diensten} />}
     </div>
+  );
+}
+
+// ---------- Print: maandoverzicht (liggend, namen × datums, functiecode per cel) ----------
+function maandLabel(jaarMaand) {
+  const [jaar, maand] = jaarMaand.split("-").map(Number);
+  const d = new Date(jaar, maand - 1, 1);
+  return d.toLocaleDateString("nl-NL", { month: "long", year: "numeric" });
+}
+
+function beschikbareMaanden(diensten) {
+  const set = new Set();
+  diensten.forEach((d) => set.add(d.datum.slice(0, 7))); // "YYYY-MM"
+  return [...set].sort();
+}
+
+function PrintKnop({ diensten, personen }) {
+  const [open, setOpen] = useState(false);
+  const maanden = useMemo(() => beschikbareMaanden(diensten), [diensten]);
+  const [gekozenMaand, setGekozenMaand] = useState(() => maanden[maanden.length - 1] || "");
+
+  useEffect(() => {
+    if (!gekozenMaand && maanden.length > 0) setGekozenMaand(maanden[maanden.length - 1]);
+  }, [maanden]);
+
+  function afdrukken() {
+    window.print();
+  }
+
+  const dagenInMaand = useMemo(() => {
+    if (!gekozenMaand) return [];
+    const [jaar, maand] = gekozenMaand.split("-").map(Number);
+    const aantalDagen = new Date(jaar, maand, 0).getDate();
+    const datums = [];
+    for (let dag = 1; dag <= aantalDagen; dag++) {
+      datums.push(gekozenMaand + "-" + String(dag).padStart(2, "0"));
+    }
+    return datums;
+  }, [gekozenMaand]);
+
+  const dienstPerDatum = useMemo(() => {
+    const m = {};
+    diensten.forEach((d) => (m[d.datum] = d));
+    return m;
+  }, [diensten]);
+
+  function functieVoor(persoonId, dienst) {
+    if (!dienst || !dienst.toewijzing) return "";
+    for (const code of FUNCTIE_ORDER) {
+      if ((dienst.toewijzing[code] || []).includes(persoonId)) return code;
+    }
+    return "";
+  }
+
+  if (maanden.length === 0) return null;
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="text-[11px] font-medium text-[#8A8F9C] hover:text-[#E8E6E1] border border-[#2A2E37] rounded-lg px-3 py-1.5 flex-shrink-0"
+      >
+        🖨️ Printen
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setOpen(false)}>
+          <div
+            className="bg-[#16181D] border border-[#2A2E37] rounded-xl p-5 max-w-md w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-[#E8E6E1] font-semibold text-base mb-3">Maandrooster printen</div>
+            <label className="block text-[11px] uppercase tracking-wider text-[#6B7280] mb-1.5">Maand</label>
+            <select
+              value={gekozenMaand}
+              onChange={(e) => setGekozenMaand(e.target.value)}
+              className="w-full bg-[#1C1F26] border border-[#2E323C] rounded-lg px-3 py-2 text-sm text-[#E8E6E1] outline-none focus:border-[#B5483D] mb-4 capitalize"
+            >
+              {maanden.map((m) => (
+                <option key={m} value={m} className="capitalize">{maandLabel(m)}</option>
+              ))}
+            </select>
+            <div className="flex gap-2">
+              <button onClick={() => setOpen(false)} className="flex-1 text-sm text-[#8A8F9C] hover:text-[#E8E6E1] border border-[#2A2E37] rounded-lg py-2">
+                Annuleren
+              </button>
+              <button onClick={afdrukken} className="flex-1 text-sm font-semibold text-[#101216] bg-[#C9A24B] hover:bg-[#B8923F] rounded-lg py-2">
+                Print voorbeeld openen
+              </button>
+            </div>
+            <p className="text-[10px] text-[#5A5F68] mt-3">
+              Kies in het printvenster van je browser de liggende stand (landscape) voor het beste resultaat.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Onzichtbaar op het scherm, alleen getoond aan de printer via @media print */}
+      <div id="print-root" className="print-only">
+        <div style={{ padding: "0", fontFamily: "Arial, sans-serif", color: "#000" }}>
+          <h1 style={{ fontSize: "16px", marginBottom: "2px", textTransform: "capitalize" }}>
+            D-Ploeg Veluwsekant — Maandrooster {gekozenMaand ? maandLabel(gekozenMaand) : ""}
+          </h1>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9px" }}>
+            <thead>
+              <tr>
+                <th style={{ border: "1px solid #999", padding: "3px 4px", textAlign: "left", background: "#eee" }}>Naam</th>
+                {dagenInMaand.map((datum) => (
+                  <th key={datum} style={{ border: "1px solid #999", padding: "2px", background: "#eee", minWidth: "20px" }}>
+                    {Number(datum.slice(8, 10))}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {personen.map((p) => (
+                <tr key={p.id}>
+                  <td style={{ border: "1px solid #999", padding: "3px 4px", fontWeight: "bold", whiteSpace: "nowrap" }}>{p.naam}</td>
+                  {dagenInMaand.map((datum) => {
+                    const dienst = dienstPerDatum[datum];
+                    const code = functieVoor(p.id, dienst);
+                    return (
+                      <td key={datum} style={{ border: "1px solid #999", padding: "2px", textAlign: "center" }}>
+                        {code}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p style={{ fontSize: "8px", color: "#555", marginTop: "6px" }}>
+            B = Bevelvoerder · M = Manschap · CTS = Chauffeur 4133 · CL = Chauffeur 4152 · OL = Opstapper 4152
+          </p>
+        </div>
+      </div>
+    </>
   );
 }
 

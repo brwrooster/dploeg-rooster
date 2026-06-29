@@ -479,16 +479,15 @@ function DienstKaart({ dienst, personMap, beschikbaarMode, onToggleBeschikbaar, 
             (dienst.toewijzing?.[code] || []).length > 0 ? (
               dienst.toewijzing[code].map((pid) => {
                 const isHandmatig = handmatigSet.has(pid);
-                const open = wijzigSlot && wijzigSlot.code === code && wijzigSlot.persoonId === pid;
                 return (
-                  <div key={code + pid} className="relative">
+                  <div key={code + pid}>
                     <div className="flex items-center gap-1">
                       <div className="flex-1 min-w-0">
                         <PersonChip naam={personMap[pid]?.naam || "?"} code={code} />
                       </div>
                       {onWijzigToewijzing && (
                         <button
-                          onClick={() => setWijzigSlot(open ? null : { code, persoonId: pid })}
+                          onClick={() => setWijzigSlot({ code, persoonId: pid })}
                           title="Wijzig of ruil deze toewijzing"
                           className="text-[#5A5F68] hover:text-[#C9A24B] text-xs flex-shrink-0 px-1"
                         >
@@ -499,88 +498,77 @@ function DienstKaart({ dienst, personMap, beschikbaarMode, onToggleBeschikbaar, 
                     {isHandmatig && (
                       <div className="text-[9px] text-[#C9A24B] mt-0.5 px-1">✋ handmatig aangepast</div>
                     )}
-                    {open && (
-                      <div className="absolute z-20 mt-1 left-0 right-0 bg-[#16181D] border border-[#2E323C] rounded-lg shadow-xl p-1.5 space-y-1 max-h-64 overflow-y-auto">
-                        {(() => {
-                          const { vrij, ruil } = kandidatenVoor(code, pid);
-                          if (vrij.length === 0 && ruil.length === 0) {
-                            return <div className="text-[11px] text-[#5A5F68] px-2 py-1.5">Geen andere bevoegde mensen beschikbaar.</div>;
-                          }
-                          return (
-                            <>
-                              {vrij.map((kp) => (
-                                <button
-                                  key={kp.id}
-                                  onClick={() => { onWijzigToewijzing(dienst.id, code, pid, kp.id); setWijzigSlot(null); }}
-                                  className="w-full text-left text-[12px] text-[#E8E6E1] hover:bg-[#1F222A] rounded-md px-2 py-1.5"
-                                >
-                                  {kp.naam}
-                                </button>
-                              ))}
-                              {ruil.length > 0 && (vrij.length > 0) && (
-                                <div className="border-t border-[#2A2E37] my-1" />
-                              )}
-                              {ruil.map((kp) => (
-                                <button
-                                  key={kp.id}
-                                  onClick={() => { onWijzigToewijzing(dienst.id, code, pid, kp.id); setWijzigSlot(null); }}
-                                  className="w-full text-left text-[12px] text-[#E8E6E1] hover:bg-[#1F222A] rounded-md px-2 py-1.5 flex items-center justify-between gap-2"
-                                >
-                                  <span>{kp.naam}</span>
-                                  <span className="text-[10px] text-[#8AA0B5] flex-shrink-0">↔ ruilt met {personMap[pid]?.naam}</span>
-                                </button>
-                              ))}
-                            </>
-                          );
-                        })()}
-                        <button onClick={() => setWijzigSlot(null)} className="w-full text-center text-[11px] text-[#6B7280] hover:text-[#8A8F9C] pt-1">
-                          Annuleren
-                        </button>
-                      </div>
-                    )}
                   </div>
                 );
               })
             ) : (
-              <div key={code} className="relative">
-                <div className="flex items-center gap-2 rounded-lg px-3 py-2 bg-[#1A1D23] border border-dashed border-[#3A3320]">
-                  <FunctieBadge code={code} />
-                  <span className="text-[#6B7280] text-xs italic flex-1">{dienst.toewijzing ? "niet ingevuld" : "nog niet ingedeeld"}</span>
-                  {onWijzigToewijzing && dienst.toewijzing && (
-                    <button
-                      onClick={() => setWijzigSlot(wijzigSlot && wijzigSlot.code === code && !wijzigSlot.persoonId ? null : { code, persoonId: null })}
-                      title="Vul deze plek handmatig in"
-                      className="text-[#5A5F68] hover:text-[#C9A24B] text-xs flex-shrink-0"
-                    >
-                      ✎
-                    </button>
-                  )}
-                </div>
-                {wijzigSlot && wijzigSlot.code === code && !wijzigSlot.persoonId && (
-                  <div className="absolute z-20 mt-1 left-0 right-0 bg-[#16181D] border border-[#2E323C] rounded-lg shadow-xl p-1.5 space-y-1 max-h-64 overflow-y-auto">
-                    {(() => {
-                      const { vrij } = kandidatenVoor(code, null);
-                      if (vrij.length === 0) {
-                        return <div className="text-[11px] text-[#5A5F68] px-2 py-1.5">Geen bevoegde mensen beschikbaar.</div>;
-                      }
-                      return vrij.map((kp) => (
-                        <button
-                          key={kp.id}
-                          onClick={() => { onWijzigToewijzing(dienst.id, code, null, kp.id); setWijzigSlot(null); }}
-                          className="w-full text-left text-[12px] text-[#E8E6E1] hover:bg-[#1F222A] rounded-md px-2 py-1.5"
-                        >
-                          {kp.naam}
-                        </button>
-                      ));
-                    })()}
-                    <button onClick={() => setWijzigSlot(null)} className="w-full text-center text-[11px] text-[#6B7280] hover:text-[#8A8F9C] pt-1">
-                      Annuleren
-                    </button>
-                  </div>
+              <div key={code} className="flex items-center gap-2 rounded-lg px-3 py-2 bg-[#1A1D23] border border-dashed border-[#3A3320]">
+                <FunctieBadge code={code} />
+                <span className="text-[#6B7280] text-xs italic flex-1">{dienst.toewijzing ? "niet ingevuld" : "nog niet ingedeeld"}</span>
+                {onWijzigToewijzing && dienst.toewijzing && (
+                  <button
+                    onClick={() => setWijzigSlot({ code, persoonId: null })}
+                    title="Vul deze plek handmatig in"
+                    className="text-[#5A5F68] hover:text-[#C9A24B] text-xs flex-shrink-0"
+                  >
+                    ✎
+                  </button>
                 )}
               </div>
             )
           )}
+        </div>
+      )}
+
+      {wijzigSlot && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setWijzigSlot(null)}>
+          <div
+            className="bg-[#16181D] border border-[#2A2E37] rounded-xl p-4 max-w-sm w-full max-h-[70vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-[#E8E6E1] font-semibold text-sm mb-1">
+              {wijzigSlot.persoonId ? "Wijzig of ruil deze plek" : "Vul deze plek handmatig in"}
+            </div>
+            <div className="text-[11px] text-[#6B7280] mb-3">
+              <FunctieBadge code={wijzigSlot.code} small /> {FUNCTIES.find((f) => f.code === wijzigSlot.code)?.label}
+              {wijzigSlot.persoonId && <> · momenteel {personMap[wijzigSlot.persoonId]?.naam}</>}
+            </div>
+            <div className="space-y-1">
+              {(() => {
+                const { vrij, ruil } = kandidatenVoor(wijzigSlot.code, wijzigSlot.persoonId);
+                if (vrij.length === 0 && ruil.length === 0) {
+                  return <div className="text-[11px] text-[#5A5F68] px-2 py-1.5">Geen bevoegde mensen beschikbaar.</div>;
+                }
+                return (
+                  <>
+                    {vrij.map((kp) => (
+                      <button
+                        key={kp.id}
+                        onClick={() => { onWijzigToewijzing(dienst.id, wijzigSlot.code, wijzigSlot.persoonId, kp.id); setWijzigSlot(null); }}
+                        className="w-full text-left text-[13px] text-[#E8E6E1] hover:bg-[#1F222A] rounded-md px-3 py-2"
+                      >
+                        {kp.naam}
+                      </button>
+                    ))}
+                    {ruil.length > 0 && vrij.length > 0 && <div className="border-t border-[#2A2E37] my-1" />}
+                    {ruil.map((kp) => (
+                      <button
+                        key={kp.id}
+                        onClick={() => { onWijzigToewijzing(dienst.id, wijzigSlot.code, wijzigSlot.persoonId, kp.id); setWijzigSlot(null); }}
+                        className="w-full text-left text-[13px] text-[#E8E6E1] hover:bg-[#1F222A] rounded-md px-3 py-2 flex items-center justify-between gap-2"
+                      >
+                        <span>{kp.naam}</span>
+                        <span className="text-[10px] text-[#8AA0B5] flex-shrink-0">↔ ruilt met {personMap[wijzigSlot.persoonId]?.naam}</span>
+                      </button>
+                    ))}
+                  </>
+                );
+              })()}
+            </div>
+            <button onClick={() => setWijzigSlot(null)} className="w-full text-center text-[12px] text-[#6B7280] hover:text-[#8A8F9C] mt-3 pt-2 border-t border-[#2A2E37]">
+              Annuleren
+            </button>
+          </div>
         </div>
       )}
     </div>

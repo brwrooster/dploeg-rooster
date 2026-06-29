@@ -57,7 +57,9 @@ async function buildCounts(db) {
     counts[p.id] = { total: 0 };
     FUNCTIE_ORDER.forEach((f) => (counts[p.id][f] = 0));
   });
-  const rows = await db.prepare("SELECT persoon_id, functie_code FROM toewijzingen").all();
+  // Handmatige correcties tellen niet mee — alleen automatisch ingedeelde
+  // toewijzingen bepalen de eerlijke-verdelingsteller.
+  const rows = await db.prepare("SELECT persoon_id, functie_code FROM toewijzingen WHERE handmatig = 0").all();
   rows.results.forEach((r) => {
     if (!counts[r.persoon_id]) return;
     counts[r.persoon_id][r.functie_code] = (counts[r.persoon_id][r.functie_code] || 0) + 1;
@@ -229,7 +231,7 @@ async function handleGetDiensten(req, env) {
       .bind(d.id)
       .all();
     const toewijzing = await env.DB.prepare(
-      "SELECT persoon_id, functie_code FROM toewijzingen WHERE dienst_id = ?"
+      "SELECT persoon_id, functie_code, handmatig FROM toewijzingen WHERE dienst_id = ?"
     )
       .bind(d.id)
       .all();
@@ -239,13 +241,18 @@ async function handleGetDiensten(req, env) {
 
     const toewijzingMap = {};
     FUNCTIE_ORDER.forEach((f) => (toewijzingMap[f] = []));
-    toewijzing.results.forEach((r) => toewijzingMap[r.functie_code]?.push(r.persoon_id));
+    const handmatigPersonen = [];
+    toewijzing.results.forEach((r) => {
+      toewijzingMap[r.functie_code]?.push(r.persoon_id);
+      if (r.handmatig) handmatigPersonen.push(r.persoon_id);
+    });
 
     result.push({
       id: d.id,
       datum: d.datum,
       beschikbaar: beschikbaar.results.map((r) => r.persoon_id),
       toewijzing: toewijzing.results.length > 0 ? toewijzingMap : null,
+      handmatigPersonen,
       tekorten: tekorten.results.map((r) => r.functie_code),
     });
   }
@@ -373,6 +380,108 @@ async function handleIndelenEen(req, env, ctx) {
   return json({ toewijzing, tekorten });
 }
 
+// Handmatige correctie: vervang op één functie-plek de toegewezen persoon door een
+// andere, voor deze specifieke dienst. Telt niet mee voor de eerlijke verdeling
+// (zie buildCounts, die WHERE handmatig = 0 gebruikt). Alleen toegestaan als de
+// nieuwe persoon beschikbaar is voor deze dienst én de functie mag.
+async function handleWijzigToewijzing(req, env, ctx) {
+  const dienstId = ctx.params.id;
+  const { functie_code, oude_persoon_id, nieuwe_persoon_id } = await req.json();
+
+  if (!FUNCTIE_ORDER.includes(functie_code)) return json({ error: "Onbekende functie." }, 400);
+  if (!nieuwe_persoon_id) return json({ error: "Nieuwe persoon is verplicht." }, 400);
+
+  const beschikbaar = await env.DB.prepare(
+    "SELECT 1 FROM beschikbaarheid WHERE dienst_id = ? AND persoon_id = ?"
+  )
+    .bind(dienstId, nieuwe_persoon_id)
+    .first();
+  if (!beschikbaar) return json({ error: "Deze persoon is niet beschikbaar voor deze dienst." }, 400);
+
+  const magFunctie = await env.DB.prepare(
+    "SELECT 1 FROM persoon_functies WHERE persoon_id = ? AND functie_code = ?"
+  )
+    .bind(nieuwe_persoon_id, functie_code)
+    .first();
+  if (!magFunctie) return json({ error: "Deze persoon mag deze functie niet vervullen." }, 400);
+
+  // Staat de nieuwe persoon al ergens anders ingedeeld binnen deze dienst? Dan wisselen
+  // we de twee plekken om, in plaats van te weigeren — mits beide ook de andere
+  // functie mogen vervullen.
+  const bestaandeRij = await env.DB.prepare(
+    "SELECT functie_code FROM toewijzingen WHERE dienst_id = ? AND persoon_id = ?"
+  )
+    .bind(dienstId, nieuwe_persoon_id)
+    .first();
+
+  if (bestaandeRij) {
+    const huidigeFunctieVanNieuwePersoon = bestaandeRij.functie_code;
+    if (huidigeFunctieVanNieuwePersoon === functie_code) {
+      return json({ error: "Deze persoon staat hier al ingedeeld." }, 400);
+    }
+    if (!oude_persoon_id) {
+      return json({ error: "Kan niet wisselen: er staat hier niemand om mee te ruilen." }, 400);
+    }
+
+    // De oude persoon moet de functie van de nieuwe persoon ook mogen, anders is de wissel niet geldig.
+    const oudeMagNieuweFunctie = await env.DB.prepare(
+      "SELECT 1 FROM persoon_functies WHERE persoon_id = ? AND functie_code = ?"
+    )
+      .bind(oude_persoon_id, huidigeFunctieVanNieuwePersoon)
+      .first();
+    if (!oudeMagNieuweFunctie) {
+      return json({ error: "De huidige persoon op deze plek mag de andere functie niet vervullen — wisselen niet mogelijk." }, 400);
+    }
+
+    await env.DB.prepare("DELETE FROM toewijzingen WHERE dienst_id = ? AND persoon_id = ?")
+      .bind(dienstId, oude_persoon_id)
+      .run();
+    await env.DB.prepare("DELETE FROM toewijzingen WHERE dienst_id = ? AND persoon_id = ?")
+      .bind(dienstId, nieuwe_persoon_id)
+      .run();
+    await env.DB.prepare(
+      "INSERT INTO toewijzingen (dienst_id, persoon_id, functie_code, handmatig) VALUES (?, ?, ?, 1)"
+    )
+      .bind(dienstId, nieuwe_persoon_id, functie_code)
+      .run();
+    await env.DB.prepare(
+      "INSERT INTO toewijzingen (dienst_id, persoon_id, functie_code, handmatig) VALUES (?, ?, ?, 1)"
+    )
+      .bind(dienstId, oude_persoon_id, huidigeFunctieVanNieuwePersoon)
+      .run();
+
+    await env.DB.prepare("DELETE FROM tekorten WHERE dienst_id = ? AND functie_code = ?")
+      .bind(dienstId, functie_code)
+      .run();
+    await env.DB.prepare("DELETE FROM tekorten WHERE dienst_id = ? AND functie_code = ?")
+      .bind(dienstId, huidigeFunctieVanNieuwePersoon)
+      .run();
+
+    return json({ ok: true, gewisseld: true });
+  }
+
+  if (oude_persoon_id) {
+    await env.DB.prepare(
+      "DELETE FROM toewijzingen WHERE dienst_id = ? AND persoon_id = ? AND functie_code = ?"
+    )
+      .bind(dienstId, oude_persoon_id, functie_code)
+      .run();
+  }
+
+  await env.DB.prepare(
+    "INSERT INTO toewijzingen (dienst_id, persoon_id, functie_code, handmatig) VALUES (?, ?, ?, 1)"
+  )
+    .bind(dienstId, nieuwe_persoon_id, functie_code)
+    .run();
+
+  // Als deze plek eerder een tekort was, is dat nu opgelost.
+  await env.DB.prepare("DELETE FROM tekorten WHERE dienst_id = ? AND functie_code = ?")
+    .bind(dienstId, functie_code)
+    .run();
+
+  return json({ ok: true });
+}
+
 async function handleIndelenAlles(req, env) {
   const alleDiensten = await env.DB.prepare("SELECT id FROM diensten ORDER BY datum").all();
   const allePersonen = await getPersonenMetFuncties(env.DB);
@@ -444,6 +553,7 @@ const routes = [
   { method: "POST", pattern: /^\/api\/diensten\/([^/]+)\/beschikbaar$/, handler: requireAuth(handleSetBeschikbaar), params: ["id"] },
   { method: "POST", pattern: /^\/api\/diensten\/([^/]+)\/beschikbaar-alle$/, handler: requireAuth(handleSetAlleBeschikbaar), params: ["id"] },
   { method: "POST", pattern: /^\/api\/diensten\/([^/]+)\/indelen$/, handler: requireAuth(handleIndelenEen), params: ["id"] },
+  { method: "POST", pattern: /^\/api\/diensten\/([^/]+)\/wijzig-toewijzing$/, handler: requireAuth(handleWijzigToewijzing), params: ["id"] },
   { method: "POST", pattern: /^\/api\/diensten\/indelen-alles$/, handler: requireAuth(handleIndelenAlles) },
 ];
 

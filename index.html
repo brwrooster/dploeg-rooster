@@ -80,6 +80,10 @@
   html[data-thema="licht"] .border-\[\#2E323C\] { border-color: #C9C0B2 !important; }
   html[data-thema="licht"] .border-\[\#3A3320\] { border-color: #E8D9A8 !important; }
   html[data-thema="licht"] .border-\[\#3D6B4C\] { border-color: #8FBFA0 !important; }
+  html[data-thema="licht"] .border-\[\#3D6B4C\]\/40 { border-color: rgb(143 191 160 / 0.4) !important; }
+  @media (prefers-color-scheme: light) {
+    html:not([data-thema="donker"]) .border-\[\#3D6B4C\]\/40 { border-color: rgb(143 191 160 / 0.4) !important; }
+  }
   html[data-thema="licht"] .border-\[\#1A1D23\] { border-color: #E3DCD0 !important; }
   html[data-thema="licht"] .text-\[\#E8E6E1\] { color: #2B2620 !important; }
   html[data-thema="licht"] .text-\[\#8A8F9C\] { color: #6B6557 !important; }
@@ -102,6 +106,16 @@
   html[data-thema="licht"] .hover\:text-\[\#DDB35E\]:hover { color: #8A6A1A !important; }
   html[data-thema="licht"] .hover\:text-\[\#A8D5B5\]:hover { color: #2D6B41 !important; }
   html[data-thema="licht"] .hover\:text-\[\#E08A7A\]:hover { color: #B5483D !important; }
+
+  /* Dagstaat-kaart gebruikt een eigen gradient i.p.v. een vlakke bg-kleur — Tailwind's
+     from-/to- classes zetten CSS-variabelen, dus die targeten we hier apart zodat de
+     kaart in het lichte thema niet donker-met-donkere-tekst blijft. */
+  html[data-thema="licht"] .from-\[\#1C2018\] { --tw-gradient-from: #EAF1EC var(--tw-gradient-from-position) !important; --tw-gradient-to: rgb(234 241 236 / 0) var(--tw-gradient-to-position) !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important; }
+  html[data-thema="licht"] .to-\[\#16181D\] { --tw-gradient-to: #FFFFFF var(--tw-gradient-to-position) !important; }
+  @media (prefers-color-scheme: light) {
+    html:not([data-thema="donker"]) .from-\[\#1C2018\] { --tw-gradient-from: #EAF1EC var(--tw-gradient-from-position) !important; --tw-gradient-to: rgb(234 241 236 / 0) var(--tw-gradient-to-position) !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important; }
+    html:not([data-thema="donker"]) .to-\[\#16181D\] { --tw-gradient-to: #FFFFFF var(--tw-gradient-to-position) !important; }
+  }
 
   /* ===== Print =====
      Bij afdrukken: verberg alles, toon alleen het print-overzicht (#print-root),

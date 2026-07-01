@@ -979,6 +979,7 @@ function DienstenTab({ api, refreshKey, bumpRefresh }) {
       <div className="flex items-center justify-between">
         <h2 className="text-[#E8E6E1] font-semibold text-base">Diensten</h2>
         <div className="flex items-center gap-2">
+          <MailKnop diensten={diensten} personen={personen} />
           <PrintKnop diensten={diensten} personen={personen} />
           {diensten.length > 0 && (
             <button onClick={indelenAlles} disabled={personen.length === 0} className="text-[11px] font-medium text-[#101216] bg-[#C9A24B] hover:bg-[#B8923F] disabled:opacity-30 rounded-lg px-3 py-1.5">Indelen</button>
@@ -1177,6 +1178,132 @@ function PrintKnop({ diensten, personen }) {
           </p>
         </div>
       </div>
+    </>
+  );
+}
+
+// Nieuwe component: Mail naar planning
+function MailKnop({ diensten, personen }) {
+  const [open, setOpen] = useState(false);
+  const maanden = useMemo(() => beschikbareMaanden(diensten), [diensten]);
+  const [gekozenMaand, setGekozenMaand] = useState(() => maanden[maanden.length - 1] || "");
+  const [mailAdres, setMailAdres] = useState("Richard.bos@vrfgv.nl");
+
+  useEffect(() => {
+    if (!gekozenMaand && maanden.length > 0) setGekozenMaand(maanden[maanden.length - 1]);
+  }, [maanden]);
+
+  function genereerMailBody() {
+    if (!gekozenMaand) return "";
+    
+    const [jaar, maand] = gekozenMaand.split("-").map(Number);
+    const aantalDagen = new Date(jaar, maand, 0).getDate();
+    const datums = [];
+    for (let dag = 1; dag <= aantalDagen; dag++) {
+      datums.push(gekozenMaand + "-" + String(dag).padStart(2, "0"));
+    }
+
+    const dienstPerDatum = {};
+    diensten.forEach((d) => (dienstPerDatum[d.datum] = d));
+
+    function functieVoor(persoonId, dienst) {
+      if (!dienst || !dienst.toewijzing) return "";
+      for (const code of FUNCTIE_ORDER) {
+        if ((dienst.toewijzing[code] || []).includes(persoonId)) return code;
+      }
+      return "";
+    }
+
+    // Bouw de tabel in platte tekst
+    let body = "D-Ploeg Veluwsekant - Maandrooster " + maandLabel(gekozenMaand) + "\n";
+    body += "=".repeat(80) + "\n\n";
+
+    // Header met datums (dag nummers)
+    body += "Naam".padEnd(25);
+    for (const datum of datums) {
+      const dagNr = Number(datum.slice(8, 10));
+      body += String(dagNr).padStart(4);
+    }
+    body += "\n";
+    body += "-".repeat(25 + datums.length * 4) + "\n";
+
+    // Rijen per persoon
+    for (const p of personen) {
+      body += p.naam.padEnd(25);
+      for (const datum of datums) {
+        const dienst = dienstPerDatum[datum];
+        const code = functieVoor(p.id, dienst);
+        body += (code || "-").padStart(4);
+      }
+      body += "\n";
+    }
+
+    body += "\n" + "=".repeat(80) + "\n\n";
+    body += "Legenda: B = Bevelvoerder | M = Manschap | CTS = Chauffeur 4133 | CL = Chauffeur 4152 | OL = Opstapper 4152\n";
+    body += "Datum gegenereerd: " + new Date().toLocaleString("nl-NL");
+
+    return body;
+  }
+
+  function openMail() {
+    const onderwerp = encodeURIComponent("Maandrooster " + maandLabel(gekozenMaand) + " - D-Ploeg Veluwsekant");
+    const body = encodeURIComponent(genereerMailBody());
+    const mailtoLink = "mailto:" + mailAdres + "?subject=" + onderwerp + "&body=" + body;
+    window.location.href = mailtoLink;
+    setOpen(false);
+  }
+
+  if (maanden.length === 0) return null;
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="text-[11px] font-medium text-[#7FAE8C] hover:text-[#A8D5B5] border border-[#3D6B4C] rounded-lg px-3 py-1.5 flex-shrink-0"
+      >
+        📧 Mail naar planning
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setOpen(false)}>
+          <div
+            className="bg-[#16181D] border border-[#2A2E37] rounded-xl p-5 max-w-md w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-[#E8E6E1] font-semibold text-base mb-3">Mail maandrooster</div>
+            <label className="block text-[11px] uppercase tracking-wider text-[#6B7280] mb-1.5">Maand</label>
+            <select
+              value={gekozenMaand}
+              onChange={(e) => setGekozenMaand(e.target.value)}
+              className="w-full bg-[#1C1F26] border border-[#2E323C] rounded-lg px-3 py-2 text-sm text-[#E8E6E1] outline-none focus:border-[#B5483D] mb-4 capitalize"
+            >
+              {maanden.map((m) => (
+                <option key={m} value={m} className="capitalize">{maandLabel(m)}</option>
+              ))}
+            </select>
+
+            <label className="block text-[11px] uppercase tracking-wider text-[#6B7280] mb-1.5">Aan:</label>
+            <input
+              type="email"
+              value={mailAdres}
+              onChange={(e) => setMailAdres(e.target.value)}
+              className="w-full bg-[#1C1F26] border border-[#2E323C] rounded-lg px-3 py-2 text-sm text-[#E8E6E1] outline-none focus:border-[#B5483D] mb-4"
+            />
+
+            <div className="flex gap-2">
+              <button onClick={() => setOpen(false)} className="flex-1 text-sm text-[#8A8F9C] hover:text-[#E8E6E1] border border-[#2A2E37] rounded-lg py-2">
+                Annuleren
+              </button>
+              <button onClick={openMail} className="flex-1 text-sm font-semibold text-[#101216] bg-[#7FAE8C] hover:bg-[#6B9A7C] rounded-lg py-2">
+                📧 Mail openen
+              </button>
+            </div>
+            <p className="text-[10px] text-[#5A5F68] mt-3">
+              De mail wordt geopend in je standaard mailprogramma met een platte tekst tabel.
+            </p>
+          </div>
+        </div>
+      )}
     </>
   );
 }

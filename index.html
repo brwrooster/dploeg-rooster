@@ -1352,22 +1352,32 @@ function PrintKnop({ diensten, personen }) {
   );
 }
 
-// Nieuwe component: Mail naar planning met PDF bijlage
+// MailKnop component met vooringevulde tekst en PDF bijlage
 function MailKnop({ diensten, personen }) {
   const [open, setOpen] = useState(false);
   const [bezig, setBezig] = useState(false);
   const maanden = useMemo(() => beschikbareMaanden(diensten), [diensten]);
   const [gekozenMaand, setGekozenMaand] = useState(() => maanden[maanden.length - 1] || "");
   const [mailAdres, setMailAdres] = useState("Richard.bos@vrfgv.nl");
-  const pdfRef = useRef(null);
 
   useEffect(() => {
     if (!gekozenMaand && maanden.length > 0) setGekozenMaand(maanden[maanden.length - 1]);
   }, [maanden]);
 
+  // Genereer de mail body met de gewenste tekst
   function genereerMailBody() {
     if (!gekozenMaand) return "";
     
+    const maandNaam = maandLabel(gekozenMaand);
+    
+    // Eerst de vaste introductietekst
+    let body = "Beste planners,\n\n";
+    body += `Hierbij ons aangepast rooster voor ${maandNaam}.\n`;
+    body += "Graag 1 op 1 overnemen in InPlanning.\n\n";
+    body += "Alvast bedankt!\n\n";
+    body += "---\n\n";
+    
+    // Dan de tabel met het rooster
     const [jaar, maand] = gekozenMaand.split("-").map(Number);
     const aantalDagen = new Date(jaar, maand, 0).getDate();
     const datums = [];
@@ -1386,7 +1396,7 @@ function MailKnop({ diensten, personen }) {
       return "";
     }
 
-    let body = "D-Ploeg Veluwsekant - Maandrooster " + maandLabel(gekozenMaand) + "\n";
+    body += "D-Ploeg Veluwsekant - Maandrooster " + maandNaam + "\n";
     body += "=".repeat(80) + "\n\n";
 
     body += "Naam".padEnd(25);
@@ -1445,30 +1455,48 @@ function MailKnop({ diensten, personen }) {
       // Verwijder tijdelijk element
       document.body.removeChild(tempDiv);
 
-      // Maak een base64 string van de PDF
-      const reader = new FileReader();
-      reader.readAsDataURL(pdfBlob);
-      reader.onload = function() {
-        const base64Data = reader.result.split(',')[1];
-        
-        // Genereer mailto link met PDF als bijlage (via base64)
-        const onderwerp = encodeURIComponent("Maandrooster " + maandLabel(gekozenMaand) + " - D-Ploeg Veluwsekant");
-        const body = encodeURIComponent(genereerMailBody() + "\n\n📎 Bijlage: Maandrooster " + maandLabel(gekozenMaand) + ".pdf");
-        
-        // Voor mail clients die base64 bijlagen ondersteunen (niet allemaal)
-        // We gebruiken een alternatieve aanpak: open mail met tekst en vermeld dat PDF gegenereerd is
-        const mailtoLink = "mailto:" + mailAdres + "?subject=" + onderwerp + "&body=" + body;
-        window.location.href = mailtoLink;
-        
-        // Download de PDF ook automatisch als backup
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(pdfBlob);
-        link.download = `Maandrooster_${gekozenMaand}_D-Ploeg.pdf`;
-        link.click();
-        
-        setBezig(false);
-        setOpen(false);
-      };
+      // Maak een bestand van de PDF
+      const pdfFile = new File([pdfBlob], `Maandrooster_${gekozenMaand}_D-Ploeg.pdf`, { type: 'application/pdf' });
+
+      // Check of de browser de Share API ondersteunt (iPhone)
+      if (navigator.share) {
+        // iOS Share Sheet - werkt perfect op iPhone
+        try {
+          await navigator.share({
+            title: `Maandrooster ${maandLabel(gekozenMaand)} - D-Ploeg`,
+            text: genereerMailBody(),
+            files: [pdfFile]
+          });
+          setBezig(false);
+          setOpen(false);
+          return;
+        } catch (shareError) {
+          // Gebruiker heeft gecancelled of share is mislukt
+          if (shareError.name !== 'AbortError') {
+            console.error('Share error:', shareError);
+          }
+          setBezig(false);
+          return;
+        }
+      }
+
+      // Fallback voor desktop: mailto + download
+      const onderwerp = encodeURIComponent(`Maandrooster ${maandLabel(gekozenMaand)} - D-Ploeg Veluwsekant`);
+      const body = encodeURIComponent(genereerMailBody() + "\n\n📎 Bijlage: Maandrooster " + maandLabel(gekozenMaand) + ".pdf");
+      
+      // Open mail met vooringevulde tekst
+      const mailtoLink = `mailto:${mailAdres}?subject=${onderwerp}&body=${body}`;
+      window.location.href = mailtoLink;
+      
+      // Download PDF als backup
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(pdfBlob);
+      link.download = `Maandrooster_${gekozenMaand}_D-Ploeg.pdf`;
+      link.click();
+      
+      setBezig(false);
+      setOpen(false);
+      
     } catch (error) {
       console.error("PDF generatie fout:", error);
       alert("Er ging iets mis bij het genereren van de PDF. Probeer het opnieuw.");
@@ -1514,6 +1542,16 @@ function MailKnop({ diensten, personen }) {
               className="w-full bg-[#1C1F26] border border-[#2E323C] rounded-lg px-3 py-2 text-sm text-[#E8E6E1] outline-none focus:border-[#B5483D] mb-4"
             />
 
+            <div className="bg-[#1F1B12] border border-[#3A3320] rounded-lg p-3 mb-4">
+              <div className="text-[11px] text-[#C9A24B] font-medium mb-1">📝 Voorbeeld mailtekst:</div>
+              <div className="text-[12px] text-[#A8ABB3]">
+                <p>Beste planners,</p>
+                <p>Hierbij ons aangepast rooster voor {gekozenMaand ? maandLabel(gekozenMaand) : "..."}.</p>
+                <p>Graag 1 op 1 overnemen in InPlanning.</p>
+                <p>Alvast bedankt!</p>
+              </div>
+            </div>
+
             <div className="flex gap-2">
               <button onClick={() => setOpen(false)} className="flex-1 text-sm text-[#8A8F9C] hover:text-[#E8E6E1] border border-[#2A2E37] rounded-lg py-2">
                 Annuleren
@@ -1527,9 +1565,9 @@ function MailKnop({ diensten, personen }) {
               </button>
             </div>
             <p className="text-[10px] text-[#5A5F68] mt-3">
-              De PDF wordt automatisch gegenereerd en als bijlage toegevoegd. De mail wordt geopend in je standaard mailprogramma.
+              De PDF wordt automatisch gegenereerd en als bijlage toegevoegd. De mail wordt geopend met de vooringevulde tekst.
               <br />
-              <span className="text-[#8AA0B5]">ℹ️ De PDF wordt ook automatisch gedownload als backup.</span>
+              <span className="text-[#8AA0B5]">ℹ️ Op iPhone wordt de Share Sheet geopend. Op desktop wordt de mail geopend.</span>
             </p>
           </div>
         </div>

@@ -12,6 +12,8 @@
 </script>
 <script src="https://cdn.tailwindcss.com">
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer">
+</script>
 
 <style>
   body {
@@ -302,76 +304,48 @@
     }
   }
 
-  /* ===== Print - Verbeterd ===== */
-  @media print {
-    @page {
-      size: landscape;
-      margin: 8mm;
-    }
-
-    /* Reset alle zichtbaarheid */
-    body * {
-      visibility: hidden !important;
-    }
-
-    /* Alleen print-root zichtbaar */
-    #print-root,
-    #print-root * {
-      visibility: visible !important;
-    }
-
-    #print-root {
-      position: fixed !important;
-      top: 0 !important;
-      left: 0 !important;
-      width: 100% !important;
-      height: 100% !important;
-      max-height: 100vh !important;
-      background: #fff !important;
-      padding: 15px !important;
-      box-sizing: border-box !important;
-      overflow: hidden !important;
-      display: flex !important;
-      flex-direction: column !important;
-      justify-content: flex-start !important;
-      page-break-after: avoid !important;
-      page-break-inside: avoid !important;
-    }
-
-    #print-content {
-      flex: 1;
-      overflow: hidden !important;
-      max-height: calc(100vh - 80px);
-    }
-
-    #print-content table {
-      width: 100% !important;
-      font-size: 8px !important;
-      border-collapse: collapse !important;
-    }
-
-    #print-content h1 {
-      font-size: 14px !important;
-      margin-bottom: 4px !important;
-    }
-
-    /* Verberg root */
-    #root,
-    #root * {
-      display: none !important;
-    }
-
-    .print-only {
-      display: block !important;
-    }
+  /* PDF generatie styles */
+  #pdf-content {
+    background: #fff;
+    padding: 20px;
+    font-family: Arial, sans-serif;
+    color: #000;
   }
-  .print-only {
-    display: none;
+  #pdf-content table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10px;
   }
-  @media print {
-    .print-only {
-      display: block !important;
-    }
+  #pdf-content th,
+  #pdf-content td {
+    border: 1px solid #999;
+    padding: 4px 6px;
+    text-align: center;
+  }
+  #pdf-content th {
+    background: #e8e8e8;
+    font-weight: bold;
+  }
+  #pdf-content .naam-col {
+    text-align: left;
+    font-weight: bold;
+  }
+  #pdf-content h1 {
+    font-size: 16px;
+    margin-bottom: 4px;
+    text-align: center;
+  }
+  #pdf-content .legenda {
+    font-size: 9px;
+    color: #555;
+    margin-top: 6px;
+    text-align: center;
+  }
+  #pdf-content .timestamp {
+    font-size: 8px;
+    color: #999;
+    text-align: right;
+    margin-top: 4px;
   }
 </style>
 <script>
@@ -1011,7 +985,7 @@
             <button onClick={onGuest} className="w-full mt-4 text-[#6B7280] hover:text-[#8A8F9C] text-sm">Bekijk rooster als gast</button>
           </div>
 
-          {/* Footer - zonder update tijd */}
+          {/* Footer */}
           <div className="w-full max-w-sm mt-8 pt-4 border-t border-[#2A2E37] text-center">
             <p className="text-[10px] text-[#5A5F68] leading-relaxed">
               © 2026 R-Tech | Web Development by Bos. All rights reserved.<br />
@@ -1302,7 +1276,7 @@
           <div className="flex items-center justify-between">
             <h2 className="text-[#E8E6E1] font-semibold text-base">Diensten</h2>
             <div className="flex items-center gap-2">
-              <PrintKnop diensten={diensten} personen={personen} />
+              <PDFKnop diensten={diensten} personen={personen} />
               {diensten.length > 0 && (
                 <button onClick={indelenAlles} disabled={personen.length === 0} className="text-[11px] font-medium text-[#101216] bg-[#C9A24B] hover:bg-[#B8923F] disabled:opacity-30 rounded-lg px-3 py-1.5">Indelen</button>
               )}
@@ -1374,7 +1348,7 @@
       );
     }
 
-    // ---------- Print: maandoverzicht (alleen in beheer) ----------
+    // ---------- PDF Knop ----------
     function maandLabel(jaarMaand) {
       const [jaar, maand] = jaarMaand.split("-").map(Number);
       const d = new Date(jaar, maand - 1, 1);
@@ -1387,205 +1361,10 @@
       return [...set].sort();
     }
 
-    // Functie om een overzichtelijke HTML tabel te genereren voor de e-mail (PDF-look)
-    function genereerPDFLookTabel(dagenInMaand, personen, dienstPerDatum, maandNaam, isDefinitief) {
-      if (!dagenInMaand || dagenInMaand.length === 0 || personen.length === 0) return '';
-
-      // Functie om functiecode te krijgen
-      function functieVoor(persoonId, dienst) {
-        if (!dienst || !dienst.toewijzing) return "";
-        for (const code of FUNCTIE_ORDER) {
-          if ((dienst.toewijzing[code] || []).includes(persoonId)) return code;
-        }
-        return "";
-      }
-
-      // Kleuren per functie
-      const kleuren = {
-        'B': '#C9A24B',
-        'M': '#5B8C8C',
-        'CTS': '#B5483D',
-        'CL': '#3D6B9C',
-        'OL': '#7A6B9C'
-      };
-
-      let html = `
-        <div style="font-family: Arial, Helvetica, sans-serif; max-width: 100%; padding: 10px 0;">
-          <div style="text-align: center; margin-bottom: 15px; border-bottom: 2px solid #333; padding-bottom: 8px;">
-            <div style="font-size: 16px; font-weight: bold; color: #1a1a1a;">D-Ploeg Veluwsekant</div>
-            <div style="font-size: 14px; font-weight: bold; color: #333;">Maandrooster ${maandNaam}${isDefinitief ? ' ✓' : ''}</div>
-          </div>
-          <table style="border-collapse: collapse; width: 100%; font-size: 11px; border: 2px solid #333;">
-            <thead>
-              <tr>
-                <th style="border: 1px solid #333; padding: 6px 8px; text-align: left; background: #e8e8e8; font-weight: bold; font-size: 11px; min-width: 100px;">Naam</th>
-      `;
-
-      // Header met dagnummers
-      dagenInMaand.forEach((datum) => {
-        const dag = Number(datum.slice(8, 10));
-        html += `<th style="border: 1px solid #333; padding: 4px 5px; text-align: center; background: #e8e8e8; font-weight: bold; font-size: 10px; min-width: 22px;">${dag}</th>`;
-      });
-
-      html += `
-              </tr>
-            </thead>
-            <tbody>
-      `;
-
-      // Rijen per persoon
-      personen.forEach((p) => {
-        html += `<tr><td style="border: 1px solid #333; padding: 4px 8px; font-weight: bold; font-size: 11px; background: #f5f5f5;">${p.naam}</td>`;
-        dagenInMaand.forEach((datum) => {
-          const dienst = dienstPerDatum[datum];
-          const code = functieVoor(p.id, dienst);
-          const kleur = code ? kleuren[code] || '#888' : '#ddd';
-          const tekst = code || '·';
-          html += `<td style="border: 1px solid #333; padding: 3px 4px; text-align: center; font-weight: bold; font-size: 10px; background: ${kleur}22; color: ${kleur};">
-            ${tekst}
-          </td>`;
-        });
-        html += `</tr>`;
-      });
-
-      html += `
-            </tbody>
-          </table>
-          <div style="margin-top: 10px; font-size: 10px; color: #555; border-top: 1px solid #ccc; padding-top: 8px;">
-            <strong>Legenda:</strong> 
-            <span style="color: #C9A24B; font-weight: bold;">B</span> = Bevelvoerder · 
-            <span style="color: #5B8C8C; font-weight: bold;">M</span> = Manschap · 
-            <span style="color: #B5483D; font-weight: bold;">CTS</span> = Chauffeur 4133 · 
-            <span style="color: #3D6B9C; font-weight: bold;">CL</span> = Chauffeur 4152 · 
-            <span style="color: #7A6B9C; font-weight: bold;">OL</span> = Opstapper 4152
-            <span style="margin-left: 15px; color: #999;">· = geen dienst</span>
-          </div>
-          <div style="margin-top: 4px; font-size: 9px; color: #999; text-align: right;">
-            Gegenereerd op ${new Date().toLocaleString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-          </div>
-        </div>
-      `;
-
-      return html;
-    }
-
-    // Functie voor compacte tabel (optie 2)
-    function genereerCompacteTabel(dagenInMaand, personen, dienstPerDatum, maandNaam, isDefinitief) {
-      if (!dagenInMaand || dagenInMaand.length === 0 || personen.length === 0) return '';
-
-      function functieVoor(persoonId, dienst) {
-        if (!dienst || !dienst.toewijzing) return "";
-        for (const code of FUNCTIE_ORDER) {
-          if ((dienst.toewijzing[code] || []).includes(persoonId)) return code;
-        }
-        return "";
-      }
-
-      let html = `
-        <div style="font-family: 'Courier New', monospace; max-width: 100%; padding: 5px 0;">
-          <div style="text-align: center; margin-bottom: 10px; font-weight: bold; font-size: 14px;">
-            D-Ploeg Veluwsekant - ${maandNaam}${isDefinitief ? ' ✓' : ''}
-          </div>
-          <pre style="font-size: 11px; font-family: 'Courier New', monospace; background: #f9f9f9; padding: 8px; border: 1px solid #ccc; border-radius: 4px; overflow-x: auto; line-height: 1.4;">
-      `;
-
-      // Header
-      let header = 'Naam'.padEnd(16);
-      dagenInMaand.forEach((datum) => {
-        const dag = String(Number(datum.slice(8, 10))).padStart(2, ' ');
-        header += dag + ' ';
-      });
-      html += header + '\n';
-      html += '-'.repeat(header.length) + '\n';
-
-      // Rijen
-      personen.forEach((p) => {
-        let rij = p.naam.padEnd(16);
-        dagenInMaand.forEach((datum) => {
-          const dienst = dienstPerDatum[datum];
-          const code = functieVoor(p.id, dienst);
-          rij += (code || '·').padStart(2, ' ') + ' ';
-        });
-        html += rij + '\n';
-      });
-
-      html += '\nLegenda: B=Bevel, M=Manschap, CTS=Chauffeur4133, CL=Chauffeur4152, OL=Opstapper4152, ·=geen dienst\n';
-      html += `Gegenereerd: ${new Date().toLocaleString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`;
-      html += `
-          </pre>
-        </div>
-      `;
-
-      return html;
-    }
-
-    // Functie voor overzicht met kleurblokken (optie 3)
-    function genereerKleurBlokTabel(dagenInMaand, personen, dienstPerDatum, maandNaam, isDefinitief) {
-      if (!dagenInMaand || dagenInMaand.length === 0 || personen.length === 0) return '';
-
-      function functieVoor(persoonId, dienst) {
-        if (!dienst || !dienst.toewijzing) return "";
-        for (const code of FUNCTIE_ORDER) {
-          if ((dienst.toewijzing[code] || []).includes(persoonId)) return code;
-        }
-        return "";
-      }
-
-      const kleuren = {
-        'B': '#C9A24B',
-        'M': '#5B8C8C',
-        'CTS': '#B5483D',
-        'CL': '#3D6B9C',
-        'OL': '#7A6B9C'
-      };
-
-      let html = `
-        <div style="font-family: Arial, sans-serif; max-width: 100%; padding: 8px 0;">
-          <div style="text-align: center; margin-bottom: 12px; font-weight: bold; font-size: 15px; color: #1a1a1a;">
-            📅 D-Ploeg Veluwsekant - ${maandNaam}${isDefinitief ? ' ✅' : ''}
-          </div>
-          <div style="display: grid; grid-template-columns: auto repeat(${dagenInMaand.length}, 1fr); gap: 2px; font-size: 10px; max-width: 100%; overflow-x: auto;">
-            <div style="font-weight: bold; padding: 4px 8px; background: #e8e8e8; border: 1px solid #ccc; text-align: left;">Naam</div>
-      `;
-
-      dagenInMaand.forEach((datum) => {
-        const dag = Number(datum.slice(8, 10));
-        html += `<div style="font-weight: bold; padding: 4px 2px; background: #e8e8e8; border: 1px solid #ccc; text-align: center; min-width: 20px;">${dag}</div>`;
-      });
-
-      personen.forEach((p) => {
-        html += `<div style="font-weight: bold; padding: 4px 8px; background: #f5f5f5; border: 1px solid #ccc; text-align: left;">${p.naam}</div>`;
-        dagenInMaand.forEach((datum) => {
-          const dienst = dienstPerDatum[datum];
-          const code = functieVoor(p.id, dienst);
-          const kleur = code ? kleuren[code] || '#888' : '#f0f0f0';
-          const tekst = code || '·';
-          html += `<div style="padding: 4px 2px; background: ${kleur}30; border: 1px solid #ccc; text-align: center; font-weight: bold; color: ${kleur}; min-width: 20px;">${tekst}</div>`;
-        });
-      });
-
-      html += `
-          </div>
-          <div style="margin-top: 8px; font-size: 9px; color: #555; border-top: 1px solid #ccc; padding-top: 6px;">
-            <strong>Legenda:</strong> 
-            <span style="color: #C9A24B; font-weight: bold;">B</span>=Bevelvoerder · 
-            <span style="color: #5B8C8C; font-weight: bold;">M</span>=Manschap · 
-            <span style="color: #B5483D; font-weight: bold;">CTS</span>=Chauffeur4133 · 
-            <span style="color: #3D6B9C; font-weight: bold;">CL</span>=Chauffeur4152 · 
-            <span style="color: #7A6B9C; font-weight: bold;">OL</span>=Opstapper4152
-            <span style="margin-left: 10px; color: #999;">·=geen dienst</span>
-            <span style="float: right; color: #999;">${new Date().toLocaleString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-          </div>
-        </div>
-      `;
-
-      return html;
-    }
-
-    function PrintKnop({ diensten, personen }) {
+    function PDFKnop({ diensten, personen }) {
       const [open, setOpen] = useState(false);
+      const [bezig, setBezig] = useState(false);
       const [definitief, setDefinitief] = useState({});
-      const [weergaveOptie, setWeergaveOptie] = useState('pdf');
       const maanden = useMemo(() => beschikbareMaanden(diensten), [diensten]);
       const [gekozenMaand, setGekozenMaand] = useState(() => maanden[maanden.length - 1] || "");
 
@@ -1631,34 +1410,113 @@
         return "";
       }
 
-      const afdrukken = () => {
-        window.print();
-        setOpen(false);
+      const genereerPDF = async () => {
+        setBezig(true);
+        try {
+          const element = document.getElementById('pdf-content');
+          if (!element) {
+            setBezig(false);
+            return;
+          }
+
+          const maandNaam = gekozenMaand ? maandLabel(gekozenMaand) : '';
+          const isDefinitief = definitief[gekozenMaand] || false;
+
+          // Bouw de PDF inhoud
+          let html = `
+            <div style="padding: 20px; font-family: Arial, sans-serif; color: #000;">
+              <h1 style="font-size: 18px; margin-bottom: 4px; text-align: center;">D-Ploeg Veluwsekant</h1>
+              <h2 style="font-size: 14px; margin-bottom: 10px; text-align: center; color: #333;">Maandrooster ${maandNaam}${isDefinitief ? ' ✓' : ''}</h2>
+              <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+                <thead>
+                  <tr>
+                    <th style="border: 1px solid #333; padding: 6px 8px; text-align: left; background: #e8e8e8; font-weight: bold;">Naam</th>
+          `;
+
+          dagenInMaand.forEach((datum) => {
+            const dag = Number(datum.slice(8, 10));
+            html += `<th style="border: 1px solid #333; padding: 4px 6px; text-align: center; background: #e8e8e8; font-weight: bold; min-width: 22px;">${dag}</th>`;
+          });
+
+          html += `
+                  </tr>
+                </thead>
+                <tbody>
+          `;
+
+          const kleuren = {
+            'B': '#C9A24B',
+            'M': '#5B8C8C',
+            'CTS': '#B5483D',
+            'CL': '#3D6B9C',
+            'OL': '#7A6B9C'
+          };
+
+          personen.forEach((p) => {
+            html += `<tr><td style="border: 1px solid #333; padding: 4px 8px; font-weight: bold; background: #f5f5f5; text-align: left;">${p.naam}</td>`;
+            dagenInMaand.forEach((datum) => {
+              const dienst = dienstPerDatum[datum];
+              const code = functieVoor(p.id, dienst);
+              const kleur = code ? kleuren[code] || '#888' : '#ddd';
+              const tekst = code || '·';
+              html += `<td style="border: 1px solid #333; padding: 3px 6px; text-align: center; font-weight: bold; color: ${kleur}; background: ${kleur}22;">${tekst}</td>`;
+            });
+            html += `</tr>`;
+          });
+
+          html += `
+                </tbody>
+              </table>
+              <div style="margin-top: 10px; font-size: 9px; color: #555; border-top: 1px solid #ccc; padding-top: 6px; text-align: center;">
+                <strong>Legenda:</strong> 
+                <span style="color: #C9A24B; font-weight: bold;">B</span> = Bevelvoerder · 
+                <span style="color: #5B8C8C; font-weight: bold;">M</span> = Manschap · 
+                <span style="color: #B5483D; font-weight: bold;">CTS</span> = Chauffeur 4133 · 
+                <span style="color: #3D6B9C; font-weight: bold;">CL</span> = Chauffeur 4152 · 
+                <span style="color: #7A6B9C; font-weight: bold;">OL</span> = Opstapper 4152
+                <span style="margin-left: 10px; color: #999;">· = geen dienst</span>
+              </div>
+              <div style="margin-top: 4px; font-size: 8px; color: #999; text-align: right;">
+                Gegenereerd op ${new Date().toLocaleString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              </div>
+            </div>
+          `;
+
+          // Zet de HTML in het verborgen element
+          element.innerHTML = html;
+
+          // Genereer PDF
+          const opt = {
+            margin: 10,
+            filename: `Maandrooster_${maandNaam.replace(/\s/g, '_')}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+          };
+
+          await html2pdf().set(opt).from(element).save();
+
+          // Markeer als definitief als checkbox is aangevinkt
+          if (gekozenMaand && document.getElementById('definitief-checkbox')?.checked) {
+            const updated = { ...definitief, [gekozenMaand]: true };
+            setDefinitief(updated);
+            localStorage.setItem('definitief_maanden', JSON.stringify(updated));
+          }
+
+          setOpen(false);
+          setBezig(false);
+        } catch (error) {
+          console.error('PDF generatie fout:', error);
+          alert('Er is een fout opgetreden bij het genereren van de PDF. Probeer het opnieuw.');
+          setBezig(false);
+        }
       };
 
       const verstuurMail = () => {
         const maandNaam = gekozenMaand ? maandLabel(gekozenMaand) : '';
         const onderwerp = `Maandrooster ${maandNaam}`;
 
-        let htmlTabel = '';
-        let tekstTabel = '';
-
-        // Kies de juiste weergave op basis van de geselecteerde optie
-        switch(weergaveOptie) {
-          case 'pdf':
-            htmlTabel = genereerPDFLookTabel(dagenInMaand, personen, dienstPerDatum, maandNaam, definitief[gekozenMaand] || false);
-            break;
-          case 'compact':
-            htmlTabel = genereerCompacteTabel(dagenInMaand, personen, dienstPerDatum, maandNaam, definitief[gekozenMaand] || false);
-            break;
-          case 'kleur':
-            htmlTabel = genereerKleurBlokTabel(dagenInMaand, personen, dienstPerDatum, maandNaam, definitief[gekozenMaand] || false);
-            break;
-          default:
-            htmlTabel = genereerPDFLookTabel(dagenInMaand, personen, dienstPerDatum, maandNaam, definitief[gekozenMaand] || false);
-        }
-
-        // Platte tekst versie als fallback (altijd hetzelfde)
+        // Genereer een tekstversie voor de mail
         let tekst = `D-Ploeg Veluwsekant — Maandrooster ${maandNaam}\n`;
         tekst += `${'='.repeat(70)}\n\n`;
         let header = 'Naam'.padEnd(18);
@@ -1680,42 +1538,13 @@
         tekst += '\n' + '-'.repeat(70) + '\n';
         tekst += 'Legenda: B=Bevelvoerder · M=Manschap · CTS=Chauffeur4133 · CL=Chauffeur4152 · OL=Opstapper4152\n';
         tekst += `Gegenereerd op ${new Date().toLocaleString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`;
-        tekstTabel = tekst;
-
-        // Bouw de volledige HTML e-mail
-        const htmlEmail = `
-          <html>
-            <head>
-              <meta charset="UTF-8">
-              <style>
-                body { font-family: Arial, sans-serif; color: #222; margin: 0; padding: 20px; }
-                .container { max-width: 950px; margin: 0 auto; }
-                .message { margin: 15px 0; }
-              </style>
-            </head>
-            <body>
-              <div class="container">
-                <div style="margin-bottom: 15px;">
-                  <p style="font-size: 14px; margin-bottom: 6px;">Beste planners,</p>
-                  <p style="font-size: 14px; margin-top: 0; margin-bottom: 6px;">Hierbij het aangepaste maandrooster.</p>
-                  <p style="font-size: 14px; margin-top: 0; margin-bottom: 15px;">Graag 1 op 1 overnemen in InPlanning.</p>
-                </div>
-                ${htmlTabel}
-                <div style="margin-top: 20px; font-size: 13px; color: #333; border-top: 1px solid #ccc; padding-top: 12px;">
-                  Met vriendelijke groet,<br>
-                  <strong>D-Ploeg Veluwsekant</strong>
-                </div>
-              </div>
-            </body>
-          </html>
-        `;
 
         const mailTekst =
           'Beste planners,\n\n' +
           'Hierbij het aangepaste maandrooster.\n' +
           'Graag 1 op 1 overnemen in InPlanning.\n\n' +
           '='.repeat(70) + '\n\n' +
-          tekstTabel + '\n\n' +
+          tekst + '\n\n' +
           '='.repeat(70) + '\n\n' +
           'Met vriendelijke groet,\n' +
           'D-Ploeg Veluwsekant';
@@ -1742,17 +1571,17 @@
             onClick={() => setOpen(true)}
             className="text-[11px] font-medium text-[#8A8F9C] hover:text-[#E8E6E1] border border-[#2A2E37] rounded-lg px-3 py-1.5 flex-shrink-0"
           >
-            🖨️ Printen/Mail
+            📄 PDF
           </button>
 
           {open && (
             <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() =>
                 setOpen(false)}>
               <div
-                className="bg-[#16181D] border border-[#2A2E37] rounded-xl p-5 max-w-md w-full max-h-[90vh] overflow-y-auto"
+                className="bg-[#16181D] border border-[#2A2E37] rounded-xl p-5 max-w-md w-full"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="text-[#E8E6E1] font-semibold text-base mb-3">Maandrooster</div>
+                <div className="text-[#E8E6E1] font-semibold text-base mb-3">PDF genereren</div>
                 
                 <label className="block text-[11px] uppercase tracking-wider text-[#6B7280] mb-1.5">Maand</label>
                 <select
@@ -1764,28 +1593,6 @@
                     <option key={m} value={m} className="capitalize">{maandLabel(m)}</option>
                   ))}
                 </select>
-
-                <label className="block text-[11px] uppercase tracking-wider text-[#6B7280] mb-1.5">Weergave optie</label>
-                <div className="flex gap-2 mb-4">
-                  <button 
-                    onClick={() => setWeergaveOptie('pdf')}
-                    className={`flex-1 text-xs font-medium rounded-lg py-1.5 px-2 transition-colors ${weergaveOptie === 'pdf' ? 'bg-[#3D6B9C] text-[#E8E6E1]' : 'bg-[#1C1F26] text-[#6B7280] border border-[#2E323C]'}`}
-                  >
-                    📄 PDF-look
-                  </button>
-                  <button 
-                    onClick={() => setWeergaveOptie('compact')}
-                    className={`flex-1 text-xs font-medium rounded-lg py-1.5 px-2 transition-colors ${weergaveOptie === 'compact' ? 'bg-[#3D6B9C] text-[#E8E6E1]' : 'bg-[#1C1F26] text-[#6B7280] border border-[#2E323C]'}`}
-                  >
-                    📋 Compact
-                  </button>
-                  <button 
-                    onClick={() => setWeergaveOptie('kleur')}
-                    className={`flex-1 text-xs font-medium rounded-lg py-1.5 px-2 transition-colors ${weergaveOptie === 'kleur' ? 'bg-[#3D6B9C] text-[#E8E6E1]' : 'bg-[#1C1F26] text-[#6B7280] border border-[#2E323C]'}`}
-                  >
-                    🎨 Kleurblok
-                  </button>
-                </div>
 
                 {gekozenMaand && (
                   <div className="mb-4 flex items-center gap-3">
@@ -1810,70 +1617,33 @@
                     <button onClick={() => setOpen(false)} className="flex-1 text-sm text-[#8A8F9C] hover:text-[#E8E6E1] border border-[#2A2E37] rounded-lg py-2">
                       Annuleren
                     </button>
-                    <button onClick={afdrukken} className="flex-1 text-sm font-semibold text-[#101216] bg-[#C9A24B] hover:bg-[#B8923F] rounded-lg py-2">
-                      Printen
+                    <button
+                      onClick={genereerPDF}
+                      disabled={bezig}
+                      className="flex-1 text-sm font-semibold text-[#101216] bg-[#C9A24B] hover:bg-[#B8923F] disabled:opacity-50 rounded-lg py-2"
+                    >
+                      {bezig ? 'Genereren...' : '📥 Download PDF'}
                     </button>
                   </div>
                   <button
                     onClick={verstuurMail}
                     className="w-full text-sm font-semibold text-[#101216] bg-[#3D6B9C] hover:bg-[#345A82] rounded-lg py-2"
                   >
-                    📧 Verstuur per mail
+                    📧 Verstuur per mail (tekst)
                   </button>
                 </div>
                 <p className="text-[10px] text-[#5A5F68] mt-3">
-                  Kies een weergave optie voor de e-mail. 'PDF-look' is het meest overzichtelijk.
+                  Klik op 'Download PDF' om het maandoverzicht als PDF op te slaan.
                 </p>
                 <p className="text-[10px] text-[#5A5F68]">
-                  Kies bij 'Printen' de liggende stand (landscape) voor het beste resultaat.
+                  Via 'Verstuur per mail' wordt de tekstversie in de e-mail gezet.
                 </p>
               </div>
             </div>
           )}
 
-          {/* Print-content - Verbeterd */}
-          <div id="print-root" className="print-only">
-            <div id="print-content" style={{ padding: "0", fontFamily: "Arial, sans-serif", color: "#000" }}>
-              <h1 style={{ fontSize: "16px", marginBottom: "4px", textTransform: "capitalize" }}>
-                D-Ploeg Veluwsekant — Maandrooster {gekozenMaand ? maandLabel(gekozenMaand) : ""}
-                {definitief[gekozenMaand] && " ✓"}
-              </h1>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9px" }}>
-                <thead>
-                  <tr>
-                    <th style={{ border: "1px solid #999", padding: "3px 4px", textAlign: "left", background: "#eee" }}>
-                      Naam</th>
-                    {dagenInMaand.map((datum) => (
-                      <th key={datum} style={{ border: "1px solid #999", padding: "2px", background: "#eee",
-                          minWidth: "20px", textAlign: "center" }}>
-                        {Number(datum.slice(8, 10))}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {personen.map((p) => (
-                    <tr key={p.id}>
-                      <td style={{ border: "1px solid #999", padding: "3px 4px", fontWeight: "bold",
-                          whiteSpace: "nowrap" }}>{p.naam}</td>
-                      {dagenInMaand.map((datum) => {
-                        const dienst = dienstPerDatum[datum];
-                        const code = functieVoor(p.id, dienst);
-                        return (
-                          <td key={datum} style={{ border: "1px solid #999", padding: "2px", textAlign: "center" }}>
-                            {code}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <p style={{ fontSize: "8px", color: "#555", marginTop: "4px" }}>
-                B = Bevelvoerder · M = Manschap · CTS = Chauffeur 4133 · CL = Chauffeur 4152 · OL = Opstapper 4152
-              </p>
-            </div>
-          </div>
+          {/* Verborgen element voor PDF generatie */}
+          <div id="pdf-content" style={{ display: 'none' }}></div>
         </>
       );
     }

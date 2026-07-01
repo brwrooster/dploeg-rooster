@@ -14,12 +14,6 @@
   ::-webkit-scrollbar { height: 6px; width: 6px; }
   ::-webkit-scrollbar-thumb { background: #2A2E37; border-radius: 3px; }
 
-  /* ===== Licht thema =====
-     Standaard volgt dit de systeeminstelling van het toestel (prefers-color-scheme).
-     Zodra iemand op de zon/maan-knop tikt, zet React het data-thema attribuut op
-     <html>, en dat overruled de systeeminstelling — ongeacht wat het toestel zegt.
-     Kazerne-dagrapport stijl: warm gebroken wit in plaats van kil kantoor-wit,
-     met dezelfde functie-kleuren (B/M/CTS/CL/OL) als anker tussen beide thema's. */
   @media (prefers-color-scheme: light) {
     html:not([data-thema="donker"]) body { background: #F2EFE9 !important; }
     html:not([data-thema="donker"]) ::-webkit-scrollbar-thumb { background: #D4CCC0 !important; }
@@ -111,9 +105,6 @@
   html[data-thema="licht"] .hover\:text-\[\#A8D5B5\]:hover { color: #2D6B41 !important; }
   html[data-thema="licht"] .hover\:text-\[\#E08A7A\]:hover { color: #B5483D !important; }
 
-  /* Dagstaat-kaart gebruikt een eigen gradient i.p.v. een vlakke bg-kleur — Tailwind's
-     from-/to- classes zetten CSS-variabelen, dus die targeten we hier apart zodat de
-     kaart in het lichte thema niet donker-met-donkere-tekst blijft. */
   html[data-thema="licht"] .from-\[\#1C2018\] { --tw-gradient-from: #EAF1EC var(--tw-gradient-from-position) !important; --tw-gradient-to: rgb(234 241 236 / 0) var(--tw-gradient-to-position) !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important; }
   html[data-thema="licht"] .to-\[\#16181D\] { --tw-gradient-to: #FFFFFF var(--tw-gradient-to-position) !important; }
   @media (prefers-color-scheme: light) {
@@ -121,9 +112,6 @@
     html:not([data-thema="donker"]) .to-\[\#16181D\] { --tw-gradient-to: #FFFFFF var(--tw-gradient-to-position) !important; }
   }
 
-  /* ===== Print =====
-     Bij afdrukken: verberg alles, toon alleen het print-overzicht (#print-root),
-     altijd in liggende stand met zwarte tekst op wit voor leesbaarheid op papier. */
   @media print {
     @page { size: landscape; margin: 10mm; }
     body * { visibility: hidden; }
@@ -136,7 +124,6 @@
   }
 </style>
 <script>
-
   window.addEventListener('error', function (e) {
     var el = document.getElementById('error-box');
     if (!el) {
@@ -155,9 +142,6 @@
 <script type="text/babel" data-presets="react">
 const { useState, useEffect, useMemo, useCallback } = React;
 
-// Beheert het thema: standaard volgt dit de systeeminstelling van het toestel,
-// maar zodra iemand handmatig wisselt (via ThemaKnop) wordt die keuze onthouden
-// in localStorage en overruled die voortaan de systeeminstelling.
 const THEMA_OPSLAG_KEY = "rooster_thema";
 
 function useThema() {
@@ -172,7 +156,6 @@ function useThema() {
     document.documentElement.setAttribute("data-thema", thema);
   }, [thema]);
 
-  // Als er nog geen handmatige keuze is opgeslagen, blijf de systeeminstelling volgen.
   useEffect(() => {
     if (localStorage.getItem(THEMA_OPSLAG_KEY)) return;
     if (!window.matchMedia) return;
@@ -207,7 +190,6 @@ function ThemaKnop({ licht, onClick, compact }) {
   );
 }
 
-// ====== CONFIG ======
 const API_BASE = window.ROOSTER_API_BASE || "https://dploeg-rooster.richard-bos.workers.dev";
 
 const FUNCTIES = [
@@ -229,8 +211,6 @@ function formatDateNL(iso) {
   return d.toLocaleDateString("nl-NL", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
 }
 
-// Vast weekschema huishoudelijke taken — alleen getoond op dagen die ook een dienst hebben.
-// getDay(): 0=zondag, 1=maandag, ..., 4=donderdag, 5=vrijdag, 6=zaterdag
 const SCHOONMAAK_PER_WEEKDAG = {
   4: "Vloer schoonmaken",
   5: "Keuken schoonmaken",
@@ -241,8 +221,6 @@ function schoonmaakTaakVoor(iso) {
   return SCHOONMAAK_PER_WEEKDAG[dag] || null;
 }
 
-// ---------- Weer (Open-Meteo, Almere) ----------
-// WMO weather codes -> icoon + korte NL-omschrijving
 const WEERCODES = {
   0: ["☀️", "helder"],
   1: ["🌤️", "vrijwel onbewolkt"],
@@ -315,7 +293,6 @@ function WeerBadge({ datum, weerPerDatum }) {
   );
 }
 
-// ---------- API helper ----------
 function useApi() {
   const [token, setToken] = useState(() => sessionStorage.getItem("rooster_token") || null);
 
@@ -352,7 +329,6 @@ function useApi() {
   return { call, login, logout, ingelogd: !!token };
 }
 
-// ---------- Visual bits ----------
 function FunctieBadge({ code, small }) {
   const f = FUNCTIES.find((x) => x.code === code);
   if (!f) return null;
@@ -395,13 +371,13 @@ function EmptyState({ title, body }) {
 function DienstKaart({ dienst, personMap, beschikbaarMode, onToggleBeschikbaar, onSetAlle, weerPerDatum, onWijzigToewijzing }) {
   const heeftTekort = dienst.tekorten && dienst.tekorten.length > 0;
   const taak = schoonmaakTaakVoor(dienst.datum);
-  const [wijzigSlot, setWijzigSlot] = useState(null); // { code, persoonId } of null
+  const [wijzigSlot, setWijzigSlot] = useState(null);
 
   const handmatigSet = useMemo(() => new Set(dienst.handmatigPersonen || []), [dienst.handmatigPersonen]);
 
   function kandidatenVoor(code, huidigePersoonId) {
     const beschikbaarIds = new Set(dienst.beschikbaar || []);
-    const toegewezenAan = {}; // persoonId -> functieCode
+    const toegewezenAan = {};
     FUNCTIE_ORDER.forEach((c) => (dienst.toewijzing?.[c] || []).forEach((pid) => (toegewezenAan[pid] = c)));
 
     const vrij = [];
@@ -416,8 +392,6 @@ function DienstKaart({ dienst, personMap, beschikbaarMode, onToggleBeschikbaar, 
       if (huidigeFunctieVanP === undefined) {
         vrij.push(p);
       } else if (huidigePersoonId) {
-        // Ruil is alleen zinvol/mogelijk als de huidige bewoner van deze plek
-        // ook de functie van p zou mogen overnemen.
         const huidigePersoon = personMap[huidigePersoonId];
         const magRuilen = huidigePersoon && (huidigePersoon.functies || []).some((f) => f.code === huidigeFunctieVanP);
         if (magRuilen) ruil.push({ ...p, ruilFunctie: huidigeFunctieVanP });
@@ -625,7 +599,6 @@ function Dagstaat({ dienst, personMap, weerPerDatum }) {
   );
 }
 
-// ---------- Guest view ----------
 function GastWeergave({ onGoToLogin }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
@@ -640,7 +613,7 @@ function GastWeergave({ onGoToLogin }) {
         .catch(() => setError("Kon het rooster niet laden."));
     }
     haalData();
-    const interval = setInterval(haalData, 2 * 60 * 1000); // elke 2 minuten
+    const interval = setInterval(haalData, 2 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -699,7 +672,6 @@ function GastWeergave({ onGoToLogin }) {
   );
 }
 
-// ---------- Login ----------
 function LoginScherm({ api, onLoggedIn, onGuest }) {
   const [gebruikersnaam, setGebruikersnaam] = useState("");
   const [wachtwoord, setWachtwoord] = useState("");
@@ -754,7 +726,6 @@ function LoginScherm({ api, onLoggedIn, onGuest }) {
   );
 }
 
-// ---------- Admin: Team ----------
 function TeamTab({ api, refreshKey, bumpRefresh }) {
   const [personen, setPersonen] = useState([]);
   const [nieuweNaam, setNieuweNaam] = useState("");
@@ -766,7 +737,6 @@ function TeamTab({ api, refreshKey, bumpRefresh }) {
     api.call("/api/personen").then((d) => setPersonen(d.personen)).finally(() => setLaden(false));
   }, [refreshKey]);
 
-  // Stille auto-refresh elke 2 minuten — geen laad-indicator, geen verstoring van open invoervelden.
   useEffect(() => {
     const interval = setInterval(() => {
       api.call("/api/personen").then((d) => setPersonen(d.personen)).catch(() => {});
@@ -888,7 +858,6 @@ function TeamTab({ api, refreshKey, bumpRefresh }) {
   );
 }
 
-// ---------- Admin: Diensten ----------
 function DienstenTab({ api, refreshKey, bumpRefresh }) {
   const [diensten, setDiensten] = useState([]);
   const [personen, setPersonen] = useState([]);
@@ -908,8 +877,6 @@ function DienstenTab({ api, refreshKey, bumpRefresh }) {
       .finally(() => setLaden(false));
   }, [refreshKey]);
 
-  // Stille auto-refresh elke 2 minuten — geen laad-indicator, geen verstoring van
-  // openstaande bewerkmodus (editId) of ingevoerde datums.
   useEffect(() => {
     const interval = setInterval(() => {
       Promise.all([api.call("/api/diensten"), api.call("/api/personen")])
@@ -1079,7 +1046,6 @@ function DienstenTab({ api, refreshKey, bumpRefresh }) {
   );
 }
 
-// ---------- Print: maandoverzicht (liggend, namen × datums, functiecode per cel) ----------
 function maandLabel(jaarMaand) {
   const [jaar, maand] = jaarMaand.split("-").map(Number);
   const d = new Date(jaar, maand - 1, 1);
@@ -1088,7 +1054,7 @@ function maandLabel(jaarMaand) {
 
 function beschikbareMaanden(diensten) {
   const set = new Set();
-  diensten.forEach((d) => set.add(d.datum.slice(0, 7))); // "YYYY-MM"
+  diensten.forEach((d) => set.add(d.datum.slice(0, 7)));
   return [...set].sort();
 }
 
@@ -1173,7 +1139,6 @@ function PrintKnop({ diensten, personen }) {
         </div>
       )}
 
-      {/* Onzichtbaar op het scherm, alleen getoond aan de printer via @media print */}
       <div id="print-root" className="print-only">
         <div style={{ padding: "0", fontFamily: "Arial, sans-serif", color: "#000" }}>
           <h1 style={{ fontSize: "16px", marginBottom: "2px", textTransform: "capitalize" }}>
@@ -1264,7 +1229,6 @@ function VerdelingTabel({ personen, diensten }) {
   );
 }
 
-// ---------- Admin shell ----------
 function AdminApp({ api, onLogout, onViewGuest }) {
   const [tab, setTab] = useState("team");
   const [refreshKey, setRefreshKey] = useState(0);
@@ -1308,7 +1272,6 @@ function AdminApp({ api, onLogout, onViewGuest }) {
   );
 }
 
-// ---------- Root ----------
 function App() {
   const api = useApi();
   const [view, setView] = useState(() => (window.location.hash === "#gast" ? "guest" : api.ingelogd ? "admin" : "login"));

@@ -331,29 +331,6 @@
       display: block;
     }
   }
-  
-  /* E-mail stijl */
-  .email-table {
-    border-collapse: collapse;
-    width: 100%;
-    font-family: 'Courier New', monospace;
-    font-size: 12px;
-  }
-  .email-table th,
-  .email-table td {
-    border: 1px solid #333;
-    padding: 4px 6px;
-    text-align: center;
-  }
-  .email-table th {
-    background: #e0e0e0;
-    font-weight: bold;
-  }
-  .email-table .naam-col {
-    text-align: left;
-    font-weight: bold;
-    padding-right: 10px;
-  }
 </style>
 <script>
   window.addEventListener('error', function(e) {
@@ -944,9 +921,15 @@
       const [error, setError] = useState("");
       const [bezig, setBezig] = useState(false);
       const { licht, wisselThema } = useThema();
-      const [uploadDatum] = useState(() => {
+      const [lastUpdated] = useState(() => {
         const d = new Date();
-        return d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
+        return d.toLocaleString('nl-NL', { 
+          day: 'numeric', 
+          month: 'long', 
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
       });
 
       async function handleSubmit(e) {
@@ -999,12 +982,12 @@
           {/* Footer */}
           <div className="w-full max-w-sm mt-8 pt-4 border-t border-[#2A2E37] text-center">
             <p className="text-[10px] text-[#5A5F68] leading-relaxed">
-              © 2026 Richard Bos – Webdesign & Development.<br />
+              © 2026 R-Tech | Web Development by Bos. All rights reserved.<br />
               <a href="mailto:Richard.bos@vrfgv.nl" className="text-[#6B7280] hover:text-[#8A8F9C] transition-colors">
                 Richard.bos@vrfgv.nl
               </a>
               <br />
-              <span className="text-[#4A4F58]">Laatste upload: {uploadDatum}</span>
+              <span className="text-[#4A4F58]">Laatste update: {lastUpdated}</span>
             </p>
           </div>
         </div>
@@ -1374,6 +1357,88 @@
       return [...set].sort();
     }
 
+    // Functie om een overzichtelijke HTML tabel te genereren voor de e-mail (PDF-look)
+    function genereerPDFLookTabel(dagenInMaand, personen, dienstPerDatum, maandNaam, isDefinitief) {
+      if (!dagenInMaand || dagenInMaand.length === 0 || personen.length === 0) return '';
+
+      // Functie om functiecode te krijgen
+      function functieVoor(persoonId, dienst) {
+        if (!dienst || !dienst.toewijzing) return "";
+        for (const code of FUNCTIE_ORDER) {
+          if ((dienst.toewijzing[code] || []).includes(persoonId)) return code;
+        }
+        return "";
+      }
+
+      // Kleuren per functie
+      const kleuren = {
+        'B': '#C9A24B',
+        'M': '#5B8C8C',
+        'CTS': '#B5483D',
+        'CL': '#3D6B9C',
+        'OL': '#7A6B9C'
+      };
+
+      let html = `
+        <div style="font-family: Arial, Helvetica, sans-serif; max-width: 100%; padding: 10px 0;">
+          <div style="text-align: center; margin-bottom: 15px; border-bottom: 2px solid #333; padding-bottom: 8px;">
+            <div style="font-size: 16px; font-weight: bold; color: #1a1a1a;">D-Ploeg Veluwsekant</div>
+            <div style="font-size: 14px; font-weight: bold; color: #333;">Maandrooster ${maandNaam}${isDefinitief ? ' ✓' : ''}</div>
+          </div>
+          <table style="border-collapse: collapse; width: 100%; font-size: 11px; border: 2px solid #333;">
+            <thead>
+              <tr>
+                <th style="border: 1px solid #333; padding: 6px 8px; text-align: left; background: #e8e8e8; font-weight: bold; font-size: 11px; min-width: 100px;">Naam</th>
+      `;
+
+      // Header met dagnummers
+      dagenInMaand.forEach((datum) => {
+        const dag = Number(datum.slice(8, 10));
+        html += `<th style="border: 1px solid #333; padding: 4px 5px; text-align: center; background: #e8e8e8; font-weight: bold; font-size: 10px; min-width: 22px;">${dag}</th>`;
+      });
+
+      html += `
+              </tr>
+            </thead>
+            <tbody>
+      `;
+
+      // Rijen per persoon
+      personen.forEach((p) => {
+        html += `<tr><td style="border: 1px solid #333; padding: 4px 8px; font-weight: bold; font-size: 11px; background: #f5f5f5;">${p.naam}</td>`;
+        dagenInMaand.forEach((datum) => {
+          const dienst = dienstPerDatum[datum];
+          const code = functieVoor(p.id, dienst);
+          const kleur = code ? kleuren[code] || '#888' : '#ddd';
+          const tekst = code || '·';
+          html += `<td style="border: 1px solid #333; padding: 3px 4px; text-align: center; font-weight: bold; font-size: 10px; background: ${kleur}22; color: ${kleur};">
+            ${tekst}
+          </td>`;
+        });
+        html += `</tr>`;
+      });
+
+      html += `
+            </tbody>
+          </table>
+          <div style="margin-top: 10px; font-size: 10px; color: #555; border-top: 1px solid #ccc; padding-top: 8px;">
+            <strong>Legenda:</strong> 
+            <span style="color: #C9A24B; font-weight: bold;">B</span> = Bevelvoerder · 
+            <span style="color: #5B8C8C; font-weight: bold;">M</span> = Manschap · 
+            <span style="color: #B5483D; font-weight: bold;">CTS</span> = Chauffeur 4133 · 
+            <span style="color: #3D6B9C; font-weight: bold;">CL</span> = Chauffeur 4152 · 
+            <span style="color: #7A6B9C; font-weight: bold;">OL</span> = Opstapper 4152
+            <span style="margin-left: 15px; color: #999;">· = geen dienst</span>
+          </div>
+          <div style="margin-top: 4px; font-size: 9px; color: #999; text-align: right;">
+            Gegenereerd op ${new Date().toLocaleString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+          </div>
+        </div>
+      `;
+
+      return html;
+    }
+
     function PrintKnop({ diensten, personen }) {
       const [open, setOpen] = useState(false);
       const [definitief, setDefinitief] = useState({});
@@ -1422,118 +1487,40 @@
         return "";
       }
 
-      // Genereer HTML tabel voor in de e-mail
-      const genereerHTMLTabel = () => {
-        if (!gekozenMaand || personen.length === 0) return '';
-
-        let html = `
-          <table style="border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 12px;">
-            <thead>
-              <tr>
-                <th style="border: 1px solid #333; padding: 6px 8px; text-align: left; background: #e0e0e0; font-weight: bold;">Naam</th>
-        `;
-
-        dagenInMaand.forEach((datum) => {
-          const dag = Number(datum.slice(8, 10));
-          html += `<th style="border: 1px solid #333; padding: 4px 6px; text-align: center; background: #e0e0e0; font-weight: bold; min-width: 25px;">${dag}</th>`;
-        });
-
-        html += `
-              </tr>
-            </thead>
-            <tbody>
-        `;
-
-        personen.forEach((p) => {
-          html += `<tr><td style="border: 1px solid #333; padding: 4px 8px; font-weight: bold;">${p.naam}</td>`;
-          dagenInMaand.forEach((datum) => {
-            const dienst = dienstPerDatum[datum];
-            const code = functieVoor(p.id, dienst);
-            html += `<td style="border: 1px solid #333; padding: 4px 6px; text-align: center;">${code || '·'}</td>`;
-          });
-          html += `</tr>`;
-        });
-
-        html += `
-            </tbody>
-          </table>
-          <p style="font-size: 11px; color: #555; margin-top: 10px;">
-            <strong>Legenda:</strong> B = Bevelvoerder · M = Manschap · CTS = Chauffeur 4133 · CL = Chauffeur 4152 · OL = Opstapper 4152
-          </p>
-          <p style="font-size: 10px; color: #888; margin-top: 5px;">
-            Dit overzicht is gegenereerd op ${new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}
-          </p>
-        `;
-
-        return html;
-      };
-
-      // Genereer platte tekst tabel als fallback
-      const genereerTekstTabel = () => {
-        if (!gekozenMaand || personen.length === 0) return '';
-
-        const maandNaam = maandLabel(gekozenMaand);
-        let tekst = `D-Ploeg Veluwsekant — Maandrooster ${maandNaam}\n`;
-        tekst += `${'='.repeat(70)}\n\n`;
-
-        let header = 'Naam'.padEnd(20);
-        dagenInMaand.forEach((datum) => {
-          const dag = String(Number(datum.slice(8, 10))).padStart(2, ' ');
-          header += dag + ' ';
-        });
-        tekst += header + '\n';
-        tekst += '-'.repeat(header.length) + '\n';
-
-        personen.forEach((p) => {
-          let rij = p.naam.padEnd(20);
-          dagenInMaand.forEach((datum) => {
-            const dienst = dienstPerDatum[datum];
-            const code = functieVoor(p.id, dienst);
-            rij += (code || '·').padStart(2, ' ') + ' ';
-          });
-          tekst += rij + '\n';
-        });
-
-        tekst += '\n' + '-'.repeat(70) + '\n';
-        tekst +=
-          'Legenda: B = Bevelvoerder · M = Manschap · CTS = Chauffeur 4133 · CL = Chauffeur 4152 · OL = Opstapper 4152\n';
-        tekst += `\nDit overzicht is gegenereerd op ${new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}`;
-
-        return tekst;
-      };
-
       const verstuurMail = () => {
         const maandNaam = gekozenMaand ? maandLabel(gekozenMaand) : '';
         const onderwerp = `Maandrooster ${maandNaam}`;
 
-        // Genereer de HTML tabel voor de e-mail
-        const htmlTabel = genereerHTMLTabel();
+        // Genereer de PDF-look HTML tabel
+        const htmlTabel = genereerPDFLookTabel(
+          dagenInMaand,
+          personen,
+          dienstPerDatum,
+          maandNaam,
+          definitief[gekozenMaand] || false
+        );
 
-        // Bouw de volledige HTML e-mail
+        // Bouw de volledige HTML e-mail met de tabel
         const htmlEmail = `
           <html>
             <head>
               <meta charset="UTF-8">
               <style>
-                body { font-family: Arial, sans-serif; color: #222; }
-                .container { max-width: 800px; margin: 0 auto; padding: 20px; }
-                .header { font-size: 16px; font-weight: bold; margin-bottom: 10px; }
-                .message { margin: 15px 0; }
-                .footer { margin-top: 20px; font-size: 12px; color: #666; }
+                body { font-family: Arial, sans-serif; color: #222; margin: 0; padding: 20px; }
+                .container { max-width: 900px; margin: 0 auto; }
               </style>
             </head>
             <body>
               <div class="container">
-                <div class="header">D-Ploeg Veluwsekant — Maandrooster ${maandNaam}</div>
-                <div class="message">
-                  <p>Beste planners,</p>
-                  <p>Hierbij het aangepaste maandrooster.</p>
-                  <p>Graag 1 op 1 overnemen in InPlanning.</p>
+                <div style="margin-bottom: 15px;">
+                  <p style="font-size: 14px; margin-bottom: 6px;">Beste planners,</p>
+                  <p style="font-size: 14px; margin-top: 0; margin-bottom: 6px;">Hierbij het aangepaste maandrooster.</p>
+                  <p style="font-size: 14px; margin-top: 0; margin-bottom: 15px;">Graag 1 op 1 overnemen in InPlanning.</p>
                 </div>
                 ${htmlTabel}
-                <div class="footer">
+                <div style="margin-top: 20px; font-size: 13px; color: #333; border-top: 1px solid #ccc; padding-top: 12px;">
                   Met vriendelijke groet,<br>
-                  D-Ploeg Veluwsekant
+                  <strong>D-Ploeg Veluwsekant</strong>
                 </div>
               </div>
             </body>
@@ -1541,8 +1528,33 @@
         `;
 
         // Platte tekst versie als fallback
-        const tekstTabel = genereerTekstTabel();
-        const tekstMail = 
+        let tekstTabel = `D-Ploeg Veluwsekant — Maandrooster ${maandNaam}\n`;
+        tekstTabel += `${'='.repeat(70)}\n\n`;
+
+        let header = 'Naam'.padEnd(18);
+        dagenInMaand.forEach((datum) => {
+          const dag = String(Number(datum.slice(8, 10))).padStart(2, ' ');
+          header += dag + ' ';
+        });
+        tekstTabel += header + '\n';
+        tekstTabel += '-'.repeat(header.length) + '\n';
+
+        personen.forEach((p) => {
+          let rij = p.naam.padEnd(18);
+          dagenInMaand.forEach((datum) => {
+            const dienst = dienstPerDatum[datum];
+            const code = functieVoor(p.id, dienst);
+            rij += (code || '·').padStart(2, ' ') + ' ';
+          });
+          tekstTabel += rij + '\n';
+        });
+
+        tekstTabel += '\n' + '-'.repeat(70) + '\n';
+        tekstTabel +=
+          'Legenda: B = Bevelvoerder · M = Manschap · CTS = Chauffeur 4133 · CL = Chauffeur 4152 · OL = Opstapper 4152\n';
+        tekstTabel += `\nGegenereerd op ${new Date().toLocaleString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`;
+
+        const mailTekst =
           'Beste planners,\n\n' +
           'Hierbij het aangepaste maandrooster.\n' +
           'Graag 1 op 1 overnemen in InPlanning.\n\n' +
@@ -1554,7 +1566,7 @@
 
         // URL encode
         const subject = encodeURIComponent(onderwerp);
-        const body = encodeURIComponent(tekstMail);
+        const body = encodeURIComponent(mailTekst);
 
         // Open mail app
         window.location.href = `mailto:?subject=${subject}&body=${body}`;
@@ -1635,7 +1647,7 @@
                   </button>
                 </div>
                 <p className="text-[10px] text-[#5A5F68] mt-3">
-                  Bij 'Verstuur per mail' wordt de tabel overzichtelijk in de e-mail gezet.
+                  De e-mail bevat een overzichtelijke tabel die eruitziet als een PDF.
                 </p>
                 <p className="text-[10px] text-[#5A5F68]">
                   Kies bij 'Printen' de liggende stand (landscape) voor het beste resultaat.

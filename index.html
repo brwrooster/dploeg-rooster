@@ -4,1329 +4,1638 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
 <title>D-Ploeg Veluwsekant</title>
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
-<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js">
+</script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js">
+</script>
+<script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js">
+</script>
+<script src="https://cdn.tailwindcss.com">
+</script>
 
 <style>
-  body { background: #101216; margin: 0; }
-  ::-webkit-scrollbar { height: 6px; width: 6px; }
-  ::-webkit-scrollbar-thumb { background: #2A2E37; border-radius: 3px; }
-
-  /* ===== Licht thema =====
-     Standaard volgt dit de systeeminstelling van het toestel (prefers-color-scheme).
-     Zodra iemand op de zon/maan-knop tikt, zet React het data-thema attribuut op
-     <html>, en dat overruled de systeeminstelling — ongeacht wat het toestel zegt.
-     Kazerne-dagrapport stijl: warm gebroken wit in plaats van kil kantoor-wit,
-     met dezelfde functie-kleuren (B/M/CTS/CL/OL) als anker tussen beide thema's. */
-  @media (prefers-color-scheme: light) {
-    html:not([data-thema="donker"]) body { background: #F2EFE9 !important; }
-    html:not([data-thema="donker"]) ::-webkit-scrollbar-thumb { background: #D4CCC0 !important; }
+  body {
+    background: #101216;
+    margin: 0;
   }
-  html[data-thema="licht"] body { background: #F2EFE9 !important; }
-  html[data-thema="licht"] ::-webkit-scrollbar-thumb { background: #D4CCC0 !important; }
-
-  @media (prefers-color-scheme: light) {
-    html:not([data-thema="donker"]) .bg-\[\#101216\] { background-color: #F2EFE9 !important; }
-    html:not([data-thema="donker"]) .bg-\[\#101216\]\/95 { background-color: rgb(242 239 233 / 0.95) !important; }
-    html:not([data-thema="donker"]) .bg-\[\#16181D\] { background-color: #FFFFFF !important; }
-    html:not([data-thema="donker"]) .bg-\[\#1A1D23\] { background-color: #ECE7DE !important; }
-    html:not([data-thema="donker"]) .bg-\[\#1C1F26\] { background-color: #FFFFFF !important; }
-    html:not([data-thema="donker"]) .bg-\[\#1C2018\] { background-color: #EAF1EC !important; }
-    html:not([data-thema="donker"]) .bg-\[\#1F1B12\] { background-color: #FBF3E3 !important; }
-    html:not([data-thema="donker"]) .bg-\[\#1F3A2E\] { background-color: #DCEFE2 !important; }
-    html:not([data-thema="donker"]) .bg-\[\#2A2E37\] { background-color: #E3DCD0 !important; }
-    html:not([data-thema="donker"]) .border-\[\#1F222A\] { border-color: #DCD4C6 !important; }
-    html:not([data-thema="donker"]) .border-\[\#262A33\] { border-color: #DCD4C6 !important; }
-    html:not([data-thema="donker"]) .border-\[\#2A2E37\] { border-color: #D4CCC0 !important; }
-    html:not([data-thema="donker"]) .border-\[\#2E323C\] { border-color: #C9C0B2 !important; }
-    html:not([data-thema="donker"]) .border-\[\#3A3320\] { border-color: #E8D9A8 !important; }
-    html:not([data-thema="donker"]) .border-\[\#3D6B4C\] { border-color: #8FBFA0 !important; }
-    html:not([data-thema="donker"]) .border-\[\#1A1D23\] { border-color: #E3DCD0 !important; }
-    html:not([data-thema="donker"]) .text-\[\#E8E6E1\] { color: #2B2620 !important; }
-    html:not([data-thema="donker"]) .text-\[\#8A8F9C\] { color: #6B6557 !important; }
-    html:not([data-thema="donker"]) .text-\[\#6B7280\] { color: #7A7264 !important; }
-    html:not([data-thema="donker"]) .text-\[\#5A5F68\] { color: #8C8474 !important; }
-    html:not([data-thema="donker"]) .text-\[\#4A4F58\] { color: #A39C8C !important; }
-    html:not([data-thema="donker"]) .text-\[\#3A3E47\] { color: #B8AF9E !important; }
-    html:not([data-thema="donker"]) .text-\[\#A8ABB3\] { color: #5C5648 !important; }
-    html:not([data-thema="donker"]) .text-\[\#8AA0B5\] { color: #5C7187 !important; }
-    html:not([data-thema="donker"]) .text-\[\#E08A7A\] { color: #B5483D !important; }
-    html:not([data-thema="donker"]) .text-\[\#E0A33D\] { color: #9C6B12 !important; }
-    html:not([data-thema="donker"]) .text-\[\#7FAE8C\] { color: #3D7A52 !important; }
-    html:not([data-thema="donker"]) .text-\[\#A8D5B5\] { color: #2D6B41 !important; }
-    html:not([data-thema="donker"]) .text-\[\#C9A24B\] { color: #9C7A1F !important; }
-    html:not([data-thema="donker"]) .text-\[\#DDB35E\] { color: #8A6A1A !important; }
-    html:not([data-thema="donker"]) .focus\:border-\[\#B5483D\]:focus { border-color: #B5483D !important; }
-    html:not([data-thema="donker"]) .hover\:bg-\[\#343945\]:hover { background-color: #D8CFC0 !important; }
-    html:not([data-thema="donker"]) .hover\:bg-\[\#1F222A\]:hover { background-color: #E3DCD0 !important; }
-    html:not([data-thema="donker"]) .hover\:text-\[\#E8E6E1\]:hover { color: #2B2620 !important; }
-    html:not([data-thema="donker"]) .hover\:text-\[\#8A8F9C\]:hover { color: #6B6557 !important; }
-    html:not([data-thema="donker"]) .hover\:text-\[\#DDB35E\]:hover { color: #8A6A1A !important; }
-    html:not([data-thema="donker"]) .hover\:text-\[\#A8D5B5\]:hover { color: #2D6B41 !important; }
-    html:not([data-thema="donker"]) .hover\:text-\[\#E08A7A\]:hover { color: #B5483D !important; }
+  ::-webkit-scrollbar {
+    height: 6px;
+    width: 6px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #2A2E37;
+    border-radius: 3px;
   }
 
-  html[data-thema="licht"] .bg-\[\#101216\] { background-color: #F2EFE9 !important; }
-  html[data-thema="licht"] .bg-\[\#101216\]\/95 { background-color: rgb(242 239 233 / 0.95) !important; }
-  html[data-thema="licht"] .bg-\[\#16181D\] { background-color: #FFFFFF !important; }
-  html[data-thema="licht"] .bg-\[\#1A1D23\] { background-color: #ECE7DE !important; }
-  html[data-thema="licht"] .bg-\[\#1C1F26\] { background-color: #FFFFFF !important; }
-  html[data-thema="licht"] .bg-\[\#1C2018\] { background-color: #EAF1EC !important; }
-  html[data-thema="licht"] .bg-\[\#1F1B12\] { background-color: #FBF3E3 !important; }
-  html[data-thema="licht"] .bg-\[\#1F3A2E\] { background-color: #DCEFE2 !important; }
-  html[data-thema="licht"] .bg-\[\#2A2E37\] { background-color: #E3DCD0 !important; }
-  html[data-thema="licht"] .border-\[\#1F222A\] { border-color: #DCD4C6 !important; }
-  html[data-thema="licht"] .border-\[\#262A33\] { border-color: #DCD4C6 !important; }
-  html[data-thema="licht"] .border-\[\#2A2E37\] { border-color: #D4CCC0 !important; }
-  html[data-thema="licht"] .border-\[\#2E323C\] { border-color: #C9C0B2 !important; }
-  html[data-thema="licht"] .border-\[\#3A3320\] { border-color: #E8D9A8 !important; }
-  html[data-thema="licht"] .border-\[\#3D6B4C\] { border-color: #8FBFA0 !important; }
-  html[data-thema="licht"] .border-\[\#3D6B4C\]\/40 { border-color: rgb(143 191 160 / 0.4) !important; }
+  /* ===== Licht thema ===== */
   @media (prefers-color-scheme: light) {
-    html:not([data-thema="donker"]) .border-\[\#3D6B4C\]\/40 { border-color: rgb(143 191 160 / 0.4) !important; }
+    html:not([data-thema="donker"]) body {
+      background: #F2EFE9 !important;
+    }
+    html:not([data-thema="donker"]) ::-webkit-scrollbar-thumb {
+      background: #D4CCC0 !important;
+    }
   }
-  html[data-thema="licht"] .border-\[\#1A1D23\] { border-color: #E3DCD0 !important; }
-  html[data-thema="licht"] .text-\[\#E8E6E1\] { color: #2B2620 !important; }
-  html[data-thema="licht"] .text-\[\#8A8F9C\] { color: #6B6557 !important; }
-  html[data-thema="licht"] .text-\[\#6B7280\] { color: #7A7264 !important; }
-  html[data-thema="licht"] .text-\[\#5A5F68\] { color: #8C8474 !important; }
-  html[data-thema="licht"] .text-\[\#4A4F58\] { color: #A39C8C !important; }
-  html[data-thema="licht"] .text-\[\#3A3E47\] { color: #B8AF9E !important; }
-  html[data-thema="licht"] .text-\[\#A8ABB3\] { color: #5C5648 !important; }
-  html[data-thema="licht"] .text-\[\#8AA0B5\] { color: #5C7187 !important; }
-  html[data-thema="licht"] .text-\[\#E08A7A\] { color: #B5483D !important; }
-  html[data-thema="licht"] .text-\[\#E0A33D\] { color: #9C6B12 !important; }
-  html[data-thema="licht"] .text-\[\#7FAE8C\] { color: #3D7A52 !important; }
-  html[data-thema="licht"] .text-\[\#A8D5B5\] { color: #2D6B41 !important; }
-  html[data-thema="licht"] .text-\[\#C9A24B\] { color: #9C7A1F !important; }
-  html[data-thema="licht"] .text-\[\#DDB35E\] { color: #8A6A1A !important; }
-  html[data-thema="licht"] .focus\:border-\[\#B5483D\]:focus { border-color: #B5483D !important; }
-  html[data-thema="licht"] .hover\:bg-\[\#343945\]:hover { background-color: #D8CFC0 !important; }
-  html[data-thema="licht"] .hover\:bg-\[\#1F222A\]:hover { background-color: #E3DCD0 !important; }
-  html[data-thema="licht"] .hover\:text-\[\#E8E6E1\]:hover { color: #2B2620 !important; }
-  html[data-thema="licht"] .hover\:text-\[\#8A8F9C\]:hover { color: #6B6557 !important; }
-  html[data-thema="licht"] .hover\:text-\[\#DDB35E\]:hover { color: #8A6A1A !important; }
-  html[data-thema="licht"] .hover\:text-\[\#A8D5B5\]:hover { color: #2D6B41 !important; }
-  html[data-thema="licht"] .hover\:text-\[\#E08A7A\]:hover { color: #B5483D !important; }
-
-  /* Dagstaat-kaart gebruikt een eigen gradient i.p.v. een vlakke bg-kleur — Tailwind's
-     from-/to- classes zetten CSS-variabelen, dus die targeten we hier apart zodat de
-     kaart in het lichte thema niet donker-met-donkere-tekst blijft. */
-  html[data-thema="licht"] .from-\[\#1C2018\] { --tw-gradient-from: #EAF1EC var(--tw-gradient-from-position) !important; --tw-gradient-to: rgb(234 241 236 / 0) var(--tw-gradient-to-position) !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important; }
-  html[data-thema="licht"] .to-\[\#16181D\] { --tw-gradient-to: #FFFFFF var(--tw-gradient-to-position) !important; }
-  @media (prefers-color-scheme: light) {
-    html:not([data-thema="donker"]) .from-\[\#1C2018\] { --tw-gradient-from: #EAF1EC var(--tw-gradient-from-position) !important; --tw-gradient-to: rgb(234 241 236 / 0) var(--tw-gradient-to-position) !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important; }
-    html:not([data-thema="donker"]) .to-\[\#16181D\] { --tw-gradient-to: #FFFFFF var(--tw-gradient-to-position) !important; }
+  html[data-thema="licht"] body {
+    background: #F2EFE9 !important;
+  }
+  html[data-thema="licht"] ::-webkit-scrollbar-thumb {
+    background: #D4CCC0 !important;
   }
 
-  /* ===== Print =====
-     Bij afdrukken: verberg alles, toon alleen het print-overzicht (#print-root),
-     altijd in liggende stand met zwarte tekst op wit voor leesbaarheid op papier. */
+  @media (prefers-color-scheme: light) {
+    html:not([data-thema="donker"]) .bg-\[\#101216\] {
+      background-color: #F2EFE9 !important;
+    }
+    html:not([data-thema="donker"]) .bg-\[\#101216\]\/95 {
+      background-color: rgb(242 239 233 / 0.95) !important;
+    }
+    html:not([data-thema="donker"]) .bg-\[\#16181D\] {
+      background-color: #FFFFFF !important;
+    }
+    html:not([data-thema="donker"]) .bg-\[\#1A1D23\] {
+      background-color: #ECE7DE !important;
+    }
+    html:not([data-thema="donker"]) .bg-\[\#1C1F26\] {
+      background-color: #FFFFFF !important;
+    }
+    html:not([data-thema="donker"]) .bg-\[\#1C2018\] {
+      background-color: #EAF1EC !important;
+    }
+    html:not([data-thema="donker"]) .bg-\[\#1F1B12\] {
+      background-color: #FBF3E3 !important;
+    }
+    html:not([data-thema="donker"]) .bg-\[\#1F3A2E\] {
+      background-color: #DCEFE2 !important;
+    }
+    html:not([data-thema="donker"]) .bg-\[\#2A2E37\] {
+      background-color: #E3DCD0 !important;
+    }
+    html:not([data-thema="donker"]) .border-\[\#1F222A\] {
+      border-color: #DCD4C6 !important;
+    }
+    html:not([data-thema="donker"]) .border-\[\#262A33\] {
+      border-color: #DCD4C6 !important;
+    }
+    html:not([data-thema="donker"]) .border-\[\#2A2E37\] {
+      border-color: #D4CCC0 !important;
+    }
+    html:not([data-thema="donker"]) .border-\[\#2E323C\] {
+      border-color: #C9C0B2 !important;
+    }
+    html:not([data-thema="donker"]) .border-\[\#3A3320\] {
+      border-color: #E8D9A8 !important;
+    }
+    html:not([data-thema="donker"]) .border-\[\#3D6B4C\] {
+      border-color: #8FBFA0 !important;
+    }
+    html:not([data-thema="donker"]) .border-\[\#1A1D23\] {
+      border-color: #E3DCD0 !important;
+    }
+    html:not([data-thema="donker"]) .text-\[\#E8E6E1\] {
+      color: #2B2620 !important;
+    }
+    html:not([data-thema="donker"]) .text-\[\#8A8F9C\] {
+      color: #6B6557 !important;
+    }
+    html:not([data-thema="donker"]) .text-\[\#6B7280\] {
+      color: #7A7264 !important;
+    }
+    html:not([data-thema="donker"]) .text-\[\#5A5F68\] {
+      color: #8C8474 !important;
+    }
+    html:not([data-thema="donker"]) .text-\[\#4A4F58\] {
+      color: #A39C8C !important;
+    }
+    html:not([data-thema="donker"]) .text-\[\#3A3E47\] {
+      color: #B8AF9E !important;
+    }
+    html:not([data-thema="donker"]) .text-\[\#A8ABB3\] {
+      color: #5C5648 !important;
+    }
+    html:not([data-thema="donker"]) .text-\[\#8AA0B5\] {
+      color: #5C7187 !important;
+    }
+    html:not([data-thema="donker"]) .text-\[\#E08A7A\] {
+      color: #B5483D !important;
+    }
+    html:not([data-thema="donker"]) .text-\[\#E0A33D\] {
+      color: #9C6B12 !important;
+    }
+    html:not([data-thema="donker"]) .text-\[\#7FAE8C\] {
+      color: #3D7A52 !important;
+    }
+    html:not([data-thema="donker"]) .text-\[\#A8D5B5\] {
+      color: #2D6B41 !important;
+    }
+    html:not([data-thema="donker"]) .text-\[\#C9A24B\] {
+      color: #9C7A1F !important;
+    }
+    html:not([data-thema="donker"]) .text-\[\#DDB35E\] {
+      color: #8A6A1A !important;
+    }
+    html:not([data-thema="donker"]) .focus\:border-\[\#B5483D\]:focus {
+      border-color: #B5483D !important;
+    }
+    html:not([data-thema="donker"]) .hover\:bg-\[\#343945\]:hover {
+      background-color: #D8CFC0 !important;
+    }
+    html:not([data-thema="donker"]) .hover\:bg-\[\#1F222A\]:hover {
+      background-color: #E3DCD0 !important;
+    }
+    html:not([data-thema="donker"]) .hover\:text-\[\#E8E6E1\]:hover {
+      color: #2B2620 !important;
+    }
+    html:not([data-thema="donker"]) .hover\:text-\[\#8A8F9C\]:hover {
+      color: #6B6557 !important;
+    }
+    html:not([data-thema="donker"]) .hover\:text-\[\#DDB35E\]:hover {
+      color: #8A6A1A !important;
+    }
+    html:not([data-thema="donker"]) .hover\:text-\[\#A8D5B5\]:hover {
+      color: #2D6B41 !important;
+    }
+    html:not([data-thema="donker"]) .hover\:text-\[\#E08A7A\]:hover {
+      color: #B5483D !important;
+    }
+  }
+
+  html[data-thema="licht"] .bg-\[\#101216\] {
+    background-color: #F2EFE9 !important;
+  }
+  html[data-thema="licht"] .bg-\[\#101216\]\/95 {
+    background-color: rgb(242 239 233 / 0.95) !important;
+  }
+  html[data-thema="licht"] .bg-\[\#16181D\] {
+    background-color: #FFFFFF !important;
+  }
+  html[data-thema="licht"] .bg-\[\#1A1D23\] {
+    background-color: #ECE7DE !important;
+  }
+  html[data-thema="licht"] .bg-\[\#1C1F26\] {
+    background-color: #FFFFFF !important;
+  }
+  html[data-thema="licht"] .bg-\[\#1C2018\] {
+    background-color: #EAF1EC !important;
+  }
+  html[data-thema="licht"] .bg-\[\#1F1B12\] {
+    background-color: #FBF3E3 !important;
+  }
+  html[data-thema="licht"] .bg-\[\#1F3A2E\] {
+    background-color: #DCEFE2 !important;
+  }
+  html[data-thema="licht"] .bg-\[\#2A2E37\] {
+    background-color: #E3DCD0 !important;
+  }
+  html[data-thema="licht"] .border-\[\#1F222A\] {
+    border-color: #DCD4C6 !important;
+  }
+  html[data-thema="licht"] .border-\[\#262A33\] {
+    border-color: #DCD4C6 !important;
+  }
+  html[data-thema="licht"] .border-\[\#2A2E37\] {
+    border-color: #D4CCC0 !important;
+  }
+  html[data-thema="licht"] .border-\[\#2E323C\] {
+    border-color: #C9C0B2 !important;
+  }
+  html[data-thema="licht"] .border-\[\#3A3320\] {
+    border-color: #E8D9A8 !important;
+  }
+  html[data-thema="licht"] .border-\[\#3D6B4C\] {
+    border-color: #8FBFA0 !important;
+  }
+  html[data-thema="licht"] .border-\[\#3D6B4C\]\/40 {
+    border-color: rgb(143 191 160 / 0.4) !important;
+  }
+  @media (prefers-color-scheme: light) {
+    html:not([data-thema="donker"]) .border-\[\#3D6B4C\]\/40 {
+      border-color: rgb(143 191 160 / 0.4) !important;
+    }
+  }
+  html[data-thema="licht"] .border-\[\#1A1D23\] {
+    border-color: #E3DCD0 !important;
+  }
+  html[data-thema="licht"] .text-\[\#E8E6E1\] {
+    color: #2B2620 !important;
+  }
+  html[data-thema="licht"] .text-\[\#8A8F9C\] {
+    color: #6B6557 !important;
+  }
+  html[data-thema="licht"] .text-\[\#6B7280\] {
+    color: #7A7264 !important;
+  }
+  html[data-thema="licht"] .text-\[\#5A5F68\] {
+    color: #8C8474 !important;
+  }
+  html[data-thema="licht"] .text-\[\#4A4F58\] {
+    color: #A39C8C !important;
+  }
+  html[data-thema="licht"] .text-\[\#3A3E47\] {
+    color: #B8AF9E !important;
+  }
+  html[data-thema="licht"] .text-\[\#A8ABB3\] {
+    color: #5C5648 !important;
+  }
+  html[data-thema="licht"] .text-\[\#8AA0B5\] {
+    color: #5C7187 !important;
+  }
+  html[data-thema="licht"] .text-\[\#E08A7A\] {
+    color: #B5483D !important;
+  }
+  html[data-thema="licht"] .text-\[\#E0A33D\] {
+    color: #9C6B12 !important;
+  }
+  html[data-thema="licht"] .text-\[\#7FAE8C\] {
+    color: #3D7A52 !important;
+  }
+  html[data-thema="licht"] .text-\[\#A8D5B5\] {
+    color: #2D6B41 !important;
+  }
+  html[data-thema="licht"] .text-\[\#C9A24B\] {
+    color: #9C7A1F !important;
+  }
+  html[data-thema="licht"] .text-\[\#DDB35E\] {
+    color: #8A6A1A !important;
+  }
+  html[data-thema="licht"] .focus\:border-\[\#B5483D\]:focus {
+    border-color: #B5483D !important;
+  }
+  html[data-thema="licht"] .hover\:bg-\[\#343945\]:hover {
+    background-color: #D8CFC0 !important;
+  }
+  html[data-thema="licht"] .hover\:bg-\[\#1F222A\]:hover {
+    background-color: #E3DCD0 !important;
+  }
+  html[data-thema="licht"] .hover\:text-\[\#E8E6E1\]:hover {
+    color: #2B2620 !important;
+  }
+  html[data-thema="licht"] .hover\:text-\[\#8A8F9C\]:hover {
+    color: #6B6557 !important;
+  }
+  html[data-thema="licht"] .hover\:text-\[\#DDB35E\]:hover {
+    color: #8A6A1A !important;
+  }
+  html[data-thema="licht"] .hover\:text-\[\#A8D5B5\]:hover {
+    color: #2D6B41 !important;
+  }
+  html[data-thema="licht"] .hover\:text-\[\#E08A7A\]:hover {
+    color: #B5483D !important;
+  }
+
+  html[data-thema="licht"] .from-\[\#1C2018\] {
+    --tw-gradient-from: #EAF1EC var(--tw-gradient-from-position) !important;
+    --tw-gradient-to: rgb(234 241 236 / 0) var(--tw-gradient-to-position) !important;
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+  }
+  html[data-thema="licht"] .to-\[\#16181D\] {
+    --tw-gradient-to: #FFFFFF var(--tw-gradient-to-position) !important;
+  }
+  @media (prefers-color-scheme: light) {
+    html:not([data-thema="donker"]) .from-\[\#1C2018\] {
+      --tw-gradient-from: #EAF1EC var(--tw-gradient-from-position) !important;
+      --tw-gradient-to: rgb(234 241 236 / 0) var(--tw-gradient-to-position) !important;
+      --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+    }
+    html:not([data-thema="donker"]) .to-\[\#16181D\] {
+      --tw-gradient-to: #FFFFFF var(--tw-gradient-to-position) !important;
+    }
+  }
+
+  /* ===== Print ===== */
   @media print {
-    @page { size: landscape; margin: 10mm; }
-    body * { visibility: hidden; }
-    #print-root, #print-root * { visibility: visible; }
-    #print-root { position: absolute; top: 0; left: 0; width: 100%; background: #fff !important; }
+    @page {
+      size: landscape;
+      margin: 10mm;
+    }
+    body * {
+      visibility: hidden;
+    }
+    #print-root,
+    #print-root * {
+      visibility: visible;
+    }
+    #print-root {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background: #fff !important;
+    }
   }
-  .print-only { display: none; }
+  .print-only {
+    display: none;
+  }
   @media print {
-    .print-only { display: block; }
+    .print-only {
+      display: block;
+    }
   }
 </style>
 <script>
-
-  window.addEventListener('error', function (e) {
+  window.addEventListener('error', function(e) {
     var el = document.getElementById('error-box');
     if (!el) {
       el = document.createElement('div');
       el.id = 'error-box';
-      el.style.cssText = 'position:fixed;inset:0;background:#101216;color:#ff8a7a;font-family:monospace;font-size:13px;padding:20px;white-space:pre-wrap;overflow:auto;z-index:99999;';
+      el.style.cssText =
+        'position:fixed;inset:0;background:#101216;color:#ff8a7a;font-family:monospace;font-size:13px;padding:20px;white-space:pre-wrap;overflow:auto;z-index:99999;';
       document.body.appendChild(el);
     }
-    el.textContent = 'JS fout:\n' + e.message + '\n\nBestand: ' + e.filename + '\nRegel: ' + e.lineno + ', kolom: ' + e.colno;
+    el.textContent = 'JS fout:\n' + e.message + '\n\nBestand: ' + e.filename + '\nRegel: ' + e.lineno + ', kolom: ' + e
+      .colno;
   });
 </script>
 </head>
 <body>
-<div id="root"></div>
+  <div id="root"></div>
 
-<script type="text/babel" data-presets="react">
-const { useState, useEffect, useMemo, useCallback } = React;
+  <script type="text/babel" data-presets="react">
+    const { useState, useEffect, useMemo, useCallback } = React;
 
-// Beheert het thema: standaard volgt dit de systeeminstelling van het toestel,
-// maar zodra iemand handmatig wisselt (via ThemaKnop) wordt die keuze onthouden
-// in localStorage en overruled die voortaan de systeeminstelling.
-const THEMA_OPSLAG_KEY = "rooster_thema";
+    // Beheert het thema
+    const THEMA_OPSLAG_KEY = "rooster_thema";
 
-function useThema() {
-  const [thema, setThemaState] = useState(() => {
-    const opgeslagen = localStorage.getItem(THEMA_OPSLAG_KEY);
-    if (opgeslagen === "licht" || opgeslagen === "donker") return opgeslagen;
-    const systeemLicht = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
-    return systeemLicht ? "licht" : "donker";
-  });
+    function useThema() {
+      const [thema, setThemaState] = useState(() => {
+        const opgeslagen = localStorage.getItem(THEMA_OPSLAG_KEY);
+        if (opgeslagen === "licht" || opgeslagen === "donker") return opgeslagen;
+        const systeemLicht = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
+        return systeemLicht ? "licht" : "donker";
+      });
 
-  useEffect(() => {
-    document.documentElement.setAttribute("data-thema", thema);
-  }, [thema]);
+      useEffect(() => {
+        document.documentElement.setAttribute("data-thema", thema);
+      }, [thema]);
 
-  // Als er nog geen handmatige keuze is opgeslagen, blijf de systeeminstelling volgen.
-  useEffect(() => {
-    if (localStorage.getItem(THEMA_OPSLAG_KEY)) return;
-    if (!window.matchMedia) return;
-    const mq = window.matchMedia("(prefers-color-scheme: light)");
-    const handler = (e) => setThemaState(e.matches ? "licht" : "donker");
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
+      useEffect(() => {
+        if (localStorage.getItem(THEMA_OPSLAG_KEY)) return;
+        if (!window.matchMedia) return;
+        const mq = window.matchMedia("(prefers-color-scheme: light)");
+        const handler = (e) => setThemaState(e.matches ? "licht" : "donker");
+        mq.addEventListener("change", handler);
+        return () => mq.removeEventListener("change", handler);
+      }, []);
 
-  function wisselThema() {
-    const nieuw = thema === "licht" ? "donker" : "licht";
-    localStorage.setItem(THEMA_OPSLAG_KEY, nieuw);
-    setThemaState(nieuw);
-  }
-
-  return { thema, licht: thema === "licht", wisselThema };
-}
-
-function ThemaKnop({ licht, onClick, compact }) {
-  return (
-    <button
-      onClick={onClick}
-      title={licht ? "Schakel naar donker thema" : "Schakel naar licht thema"}
-      className={
-        "flex items-center justify-center rounded-lg border transition-colors flex-shrink-0 " +
-        (compact ? "w-8 h-8 text-sm" : "w-9 h-9 text-base") + " " +
-        "border-[#2A2E37] text-[#8A8F9C] hover:text-[#E8E6E1]"
+      function wisselThema() {
+        const nieuw = thema === "licht" ? "donker" : "licht";
+        localStorage.setItem(THEMA_OPSLAG_KEY, nieuw);
+        setThemaState(nieuw);
       }
-    >
-      {licht ? "🌙" : "☀️"}
-    </button>
-  );
-}
 
-// ====== CONFIG ======
-const API_BASE = window.ROOSTER_API_BASE || "https://dploeg-rooster.richard-bos.workers.dev";
+      return { thema, licht: thema === "licht", wisselThema };
+    }
 
-const FUNCTIES = [
-  { code: "B", label: "Bevelvoerder", slots: 1, color: "#C9A24B" },
-  { code: "M", label: "Manschap", slots: 2, color: "#5B8C8C" },
-  { code: "CTS", label: "Chauffeur 4133", slots: 1, color: "#B5483D" },
-  { code: "CL", label: "Chauffeur 4152", slots: 1, color: "#3D6B9C" },
-  { code: "OL", label: "Opstapper 4152", slots: 1, color: "#7A6B9C" },
-];
-const FUNCTIE_ORDER = ["B", "M", "CTS", "CL", "OL"];
-const MAX_NAMEN = 10;
-const LOGO_URL = "/c953c7ff-b499-4aad-a62a-b332b3bed244.jpeg";
+    function ThemaKnop({ licht, onClick, compact }) {
+      return (
+        <button
+          onClick={onClick}
+          title={licht ? "Schakel naar donker thema" : "Schakel naar licht thema"}
+          className={
+            "flex items-center justify-center rounded-lg border transition-colors flex-shrink-0 " +
+            (compact ? "w-8 h-8 text-sm" : "w-9 h-9 text-base") + " " +
+            "border-[#2A2E37] text-[#8A8F9C] hover:text-[#E8E6E1]"
+          }
+        >
+          {licht ? "🌙" : "☀️"}
+        </button>
+      );
+    }
 
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
-}
-function formatDateNL(iso) {
-  const d = new Date(iso + "T00:00:00");
-  return d.toLocaleDateString("nl-NL", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
-}
+    // ====== CONFIG ======
+    const API_BASE = window.ROOSTER_API_BASE || "https://dploeg-rooster.richard-bos.workers.dev";
 
-// Vast weekschema huishoudelijke taken — alleen getoond op dagen die ook een dienst hebben.
-// getDay(): 0=zondag, 1=maandag, ..., 4=donderdag, 5=vrijdag, 6=zaterdag
-const SCHOONMAAK_PER_WEEKDAG = {
-  4: "Vloer schoonmaken",
-  5: "Keuken schoonmaken",
-  6: "Bovenverdieping schoonmaken",
-};
-function schoonmaakTaakVoor(iso) {
-  const dag = new Date(iso + "T00:00:00").getDay();
-  return SCHOONMAAK_PER_WEEKDAG[dag] || null;
-}
+    const FUNCTIES = [
+      { code: "B", label: "Bevelvoerder", slots: 1, color: "#C9A24B" },
+      { code: "M", label: "Manschap", slots: 2, color: "#5B8C8C" },
+      { code: "CTS", label: "Chauffeur 4133", slots: 1, color: "#B5483D" },
+      { code: "CL", label: "Chauffeur 4152", slots: 1, color: "#3D6B9C" },
+      { code: "OL", label: "Opstapper 4152", slots: 1, color: "#7A6B9C" },
+    ];
+    const FUNCTIE_ORDER = ["B", "M", "CTS", "CL", "OL"];
+    const MAX_NAMEN = 10;
+    const LOGO_URL = "/c953c7ff-b499-4aad-a62a-b332b3bed244.jpeg";
 
-// ---------- Weer (Open-Meteo, Almere) ----------
-// WMO weather codes -> icoon + korte NL-omschrijving
-const WEERCODES = {
-  0: ["☀️", "helder"],
-  1: ["🌤️", "vrijwel onbewolkt"],
-  2: ["⛅", "half bewolkt"],
-  3: ["☁️", "bewolkt"],
-  45: ["🌫️", "mist"],
-  48: ["🌫️", "mist met rijp"],
-  51: ["🌦️", "lichte motregen"],
-  53: ["🌦️", "motregen"],
-  55: ["🌦️", "dichte motregen"],
-  56: ["🌧️", "lichte ijzel"],
-  57: ["🌧️", "ijzel"],
-  61: ["🌧️", "lichte regen"],
-  63: ["🌧️", "regen"],
-  65: ["🌧️", "zware regen"],
-  66: ["🌧️", "lichte ijzelregen"],
-  67: ["🌧️", "ijzelregen"],
-  71: ["🌨️", "lichte sneeuw"],
-  73: ["🌨️", "sneeuw"],
-  75: ["❄️", "zware sneeuwval"],
-  77: ["🌨️", "sneeuwkorrels"],
-  80: ["🌦️", "lichte regenbui"],
-  81: ["🌧️", "regenbui"],
-  82: ["⛈️", "zware regenbui"],
-  85: ["🌨️", "lichte sneeuwbui"],
-  86: ["❄️", "sneeuwbui"],
-  95: ["⛈️", "onweer"],
-  96: ["⛈️", "onweer met hagel"],
-  99: ["⛈️", "zwaar onweer met hagel"],
-};
+    function todayISO() {
+      return new Date().toISOString().slice(0, 10);
+    }
 
-const WEER_LAT = 52.37;
-const WEER_LON = 5.22;
+    function formatDateNL(iso) {
+      const d = new Date(iso + "T00:00:00");
+      return d.toLocaleDateString("nl-NL", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+    }
 
-function useWeerAlmere() {
-  const [weerPerDatum, setWeerPerDatum] = useState({});
+    const SCHOONMAAK_PER_WEEKDAG = {
+      4: "Vloer schoonmaken",
+      5: "Keuken schoonmaken",
+      6: "Bovenverdieping schoonmaken",
+    };
 
-  useEffect(() => {
-    const url =
-      "https://api.open-meteo.com/v1/forecast?latitude=" + WEER_LAT + "&longitude=" + WEER_LON +
-      "&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=Europe%2FAmsterdam&forecast_days=16";
-    fetch(url)
-      .then((r) => r.json())
-      .then((data) => {
-        if (!data.daily || !data.daily.time) return;
-        const m = {};
-        data.daily.time.forEach((datum, i) => {
-          m[datum] = {
-            code: data.daily.weather_code[i],
-            max: Math.round(data.daily.temperature_2m_max[i]),
-            min: Math.round(data.daily.temperature_2m_min[i]),
-          };
+    function schoonmaakTaakVoor(iso) {
+      const dag = new Date(iso + "T00:00:00").getDay();
+      return SCHOONMAAK_PER_WEEKDAG[dag] || null;
+    }
+
+    // ---------- Weer ----------
+    const WEERCODES = {
+      0: ["☀️", "helder"],
+      1: ["🌤️", "vrijwel onbewolkt"],
+      2: ["⛅", "half bewolkt"],
+      3: ["☁️", "bewolkt"],
+      45: ["🌫️", "mist"],
+      48: ["🌫️", "mist met rijp"],
+      51: ["🌦️", "lichte motregen"],
+      53: ["🌦️", "motregen"],
+      55: ["🌦️", "dichte motregen"],
+      56: ["🌧️", "lichte ijzel"],
+      57: ["🌧️", "ijzel"],
+      61: ["🌧️", "lichte regen"],
+      63: ["🌧️", "regen"],
+      65: ["🌧️", "zware regen"],
+      66: ["🌧️", "lichte ijzelregen"],
+      67: ["🌧️", "ijzelregen"],
+      71: ["🌨️", "lichte sneeuw"],
+      73: ["🌨️", "sneeuw"],
+      75: ["❄️", "zware sneeuwval"],
+      77: ["🌨️", "sneeuwkorrels"],
+      80: ["🌦️", "lichte regenbui"],
+      81: ["🌧️", "regenbui"],
+      82: ["⛈️", "zware regenbui"],
+      85: ["🌨️", "lichte sneeuwbui"],
+      86: ["❄️", "sneeuwbui"],
+      95: ["⛈️", "onweer"],
+      96: ["⛈️", "onweer met hagel"],
+      99: ["⛈️", "zwaar onweer met hagel"],
+    };
+
+    const WEER_LAT = 52.37;
+    const WEER_LON = 5.22;
+
+    function useWeerAlmere() {
+      const [weerPerDatum, setWeerPerDatum] = useState({});
+
+      useEffect(() => {
+        const url =
+          "https://api.open-meteo.com/v1/forecast?latitude=" + WEER_LAT + "&longitude=" + WEER_LON +
+          "&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=Europe%2FAmsterdam&forecast_days=16";
+        fetch(url)
+          .then((r) => r.json())
+          .then((data) => {
+            if (!data.daily || !data.daily.time) return;
+            const m = {};
+            data.daily.time.forEach((datum, i) => {
+              m[datum] = {
+                code: data.daily.weather_code[i],
+                max: Math.round(data.daily.temperature_2m_max[i]),
+                min: Math.round(data.daily.temperature_2m_min[i]),
+              };
+            });
+            setWeerPerDatum(m);
+          })
+          .catch(() => {});
+      }, []);
+
+      return weerPerDatum;
+    }
+
+    function WeerBadge({ datum, weerPerDatum }) {
+      const w = weerPerDatum[datum];
+      if (!w) return null;
+      const [icoon, tekst] = WEERCODES[w.code] || ["", ""];
+      return (
+        <div className="text-[11px] text-[#8A8F9C] mt-0.5 flex items-center gap-1">
+          <span>{icoon}</span> {w.max}° / {w.min}°{tekst ? ", " + tekst : ""}
+        </div>
+      );
+    }
+
+    // ---------- API helper ----------
+    function useApi() {
+      const [token, setToken] = useState(() => sessionStorage.getItem("rooster_token") || null);
+
+      const call = useCallback(
+        async (path, opts = {}) => {
+          const headers = { "Content-Type": "application/json" };
+          if (token) headers["Authorization"] = "Bearer " + token;
+          const res = await fetch(API_BASE + path, { ...opts, headers });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || "Onbekende fout (" + res.status + ")");
+          return data;
+        },
+        [token]
+      );
+
+      const login = useCallback(async (gebruikersnaam, wachtwoord) => {
+        const res = await fetch(API_BASE + "/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ gebruikersnaam, wachtwoord }),
         });
-        setWeerPerDatum(m);
-      })
-      .catch(() => {});
-  }, []);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "Inloggen mislukt.");
+        sessionStorage.setItem("rooster_token", data.token);
+        setToken(data.token);
+        return data;
+      }, []);
 
-  return weerPerDatum;
-}
+      const logout = useCallback(() => {
+        sessionStorage.removeItem("rooster_token");
+        setToken(null);
+      }, []);
 
-function WeerBadge({ datum, weerPerDatum }) {
-  const w = weerPerDatum[datum];
-  if (!w) return null;
-  const [icoon, tekst] = WEERCODES[w.code] || ["", ""];
-  return (
-    <div className="text-[11px] text-[#8A8F9C] mt-0.5 flex items-center gap-1">
-      <span>{icoon}</span> {w.max}° / {w.min}°{tekst ? ", " + tekst : ""}
-    </div>
-  );
-}
+      return { call, login, logout, ingelogd: !!token };
+    }
 
-// ---------- API helper ----------
-function useApi() {
-  const [token, setToken] = useState(() => sessionStorage.getItem("rooster_token") || null);
+    // ---------- Visual bits ----------
+    function FunctieBadge({ code, small }) {
+      const f = FUNCTIES.find((x) => x.code === code);
+      if (!f) return null;
+      return (
+        <span
+          className={"inline-flex items-center justify-center font-bold tracking-wide rounded-md " + (small ?
+            "text-[10px] px-1.5 py-0.5" : "text-xs px-2 py-1")}
+          style={{ background: f.color + "22", color: f.color, border: "1px solid " + f.color + "55" }}
+          title={f.label}
+        >
+          {code}
+        </span>
+      );
+    }
 
-  const call = useCallback(
-    async (path, opts = {}) => {
-      const headers = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = "Bearer " + token;
-      const res = await fetch(API_BASE + path, { ...opts, headers });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Onbekende fout (" + res.status + ")");
-      return data;
-    },
-    [token]
-  );
+    function PersonChip({ naam, code }) {
+      const f = FUNCTIES.find((x) => x.code === code);
+      return (
+        <div className="flex items-center gap-2 rounded-lg px-3 py-2 bg-[#1A1D23] border border-[#2A2E37]">
+          <span className="w-1.5 h-6 rounded-full flex-shrink-0" style={{ background: f ? f.color : "#555" }} />
+          <div className="min-w-0">
+            <div className="text-[10px] uppercase tracking-wider text-[#8A8F9C] leading-none mb-0.5">{f ? f.label :
+              code}</div>
+            <div className="text-sm font-medium text-[#E8E6E1] truncate">{naam}</div>
+          </div>
+        </div>
+      );
+    }
 
-  const login = useCallback(async (gebruikersnaam, wachtwoord) => {
-    const res = await fetch(API_BASE + "/api/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ gebruikersnaam, wachtwoord }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || "Inloggen mislukt.");
-    sessionStorage.setItem("rooster_token", data.token);
-    setToken(data.token);
-    return data;
-  }, []);
+    function EmptyState({ title, body }) {
+      return (
+        <div className="flex flex-col items-center text-center py-16 px-6">
+          <div className="w-12 h-12 rounded-full bg-[#1A1D23] border border-[#2A2E37] flex items-center justify-center mb-4">
+            <span className="text-[#4A4F58] text-lg">·</span>
+          </div>
+          <div className="text-[#A8ABB3] font-medium text-sm mb-1">{title}</div>
+          <div className="text-[#5A5F68] text-xs max-w-xs">{body}</div>
+        </div>
+      );
+    }
 
-  const logout = useCallback(() => {
-    sessionStorage.removeItem("rooster_token");
-    setToken(null);
-  }, []);
+    function DienstKaart({ dienst, personMap, beschikbaarMode, onToggleBeschikbaar, onSetAlle, weerPerDatum,
+      onWijzigToewijzing }) {
+      const heeftTekort = dienst.tekorten && dienst.tekorten.length > 0;
+      const taak = schoonmaakTaakVoor(dienst.datum);
+      const [wijzigSlot, setWijzigSlot] = useState(null);
 
-  return { call, login, logout, ingelogd: !!token };
-}
+      const handmatigSet = useMemo(() => new Set(dienst.handmatigPersonen || []), [dienst.handmatigPersonen]);
 
-// ---------- Visual bits ----------
-function FunctieBadge({ code, small }) {
-  const f = FUNCTIES.find((x) => x.code === code);
-  if (!f) return null;
-  return (
-    <span
-      className={"inline-flex items-center justify-center font-bold tracking-wide rounded-md " + (small ? "text-[10px] px-1.5 py-0.5" : "text-xs px-2 py-1")}
-      style={{ background: f.color + "22", color: f.color, border: "1px solid " + f.color + "55" }}
-      title={f.label}
-    >
-      {code}
-    </span>
-  );
-}
+      function kandidatenVoor(code, huidigePersoonId) {
+        const beschikbaarIds = new Set(dienst.beschikbaar || []);
+        const toegewezenAan = {};
+        FUNCTIE_ORDER.forEach((c) => (dienst.toewijzing?.[c] || []).forEach((pid) => (toegewezenAan[pid] = c)));
 
-function PersonChip({ naam, code }) {
-  const f = FUNCTIES.find((x) => x.code === code);
-  return (
-    <div className="flex items-center gap-2 rounded-lg px-3 py-2 bg-[#1A1D23] border border-[#2A2E37]">
-      <span className="w-1.5 h-6 rounded-full flex-shrink-0" style={{ background: f ? f.color : "#555" }} />
-      <div className="min-w-0">
-        <div className="text-[10px] uppercase tracking-wider text-[#8A8F9C] leading-none mb-0.5">{f ? f.label : code}</div>
-        <div className="text-sm font-medium text-[#E8E6E1] truncate">{naam}</div>
-      </div>
-    </div>
-  );
-}
+        const vrij = [];
+        const ruil = [];
 
-function EmptyState({ title, body }) {
-  return (
-    <div className="flex flex-col items-center text-center py-16 px-6">
-      <div className="w-12 h-12 rounded-full bg-[#1A1D23] border border-[#2A2E37] flex items-center justify-center mb-4">
-        <span className="text-[#4A4F58] text-lg">·</span>
-      </div>
-      <div className="text-[#A8ABB3] font-medium text-sm mb-1">{title}</div>
-      <div className="text-[#5A5F68] text-xs max-w-xs">{body}</div>
-    </div>
-  );
-}
+        Object.values(personMap).forEach((p) => {
+          if (!beschikbaarIds.has(p.id)) return;
+          if (!(p.functies || []).some((f) => f.code === code)) return;
+          if (p.id === huidigePersoonId) return;
 
-function DienstKaart({ dienst, personMap, beschikbaarMode, onToggleBeschikbaar, onSetAlle, weerPerDatum, onWijzigToewijzing }) {
-  const heeftTekort = dienst.tekorten && dienst.tekorten.length > 0;
-  const taak = schoonmaakTaakVoor(dienst.datum);
-  const [wijzigSlot, setWijzigSlot] = useState(null); // { code, persoonId } of null
+          const huidigeFunctieVanP = toegewezenAan[p.id];
+          if (huidigeFunctieVanP === undefined) {
+            vrij.push(p);
+          } else if (huidigePersoonId) {
+            const huidigePersoon = personMap[huidigePersoonId];
+            const magRuilen = huidigePersoon && (huidigePersoon.functies || []).some((f) => f.code ===
+              huidigeFunctieVanP);
+            if (magRuilen) ruil.push({ ...p, ruilFunctie: huidigeFunctieVanP });
+          }
+        });
 
-  const handmatigSet = useMemo(() => new Set(dienst.handmatigPersonen || []), [dienst.handmatigPersonen]);
-
-  function kandidatenVoor(code, huidigePersoonId) {
-    const beschikbaarIds = new Set(dienst.beschikbaar || []);
-    const toegewezenAan = {}; // persoonId -> functieCode
-    FUNCTIE_ORDER.forEach((c) => (dienst.toewijzing?.[c] || []).forEach((pid) => (toegewezenAan[pid] = c)));
-
-    const vrij = [];
-    const ruil = [];
-
-    Object.values(personMap).forEach((p) => {
-      if (!beschikbaarIds.has(p.id)) return;
-      if (!(p.functies || []).some((f) => f.code === code)) return;
-      if (p.id === huidigePersoonId) return;
-
-      const huidigeFunctieVanP = toegewezenAan[p.id];
-      if (huidigeFunctieVanP === undefined) {
-        vrij.push(p);
-      } else if (huidigePersoonId) {
-        // Ruil is alleen zinvol/mogelijk als de huidige bewoner van deze plek
-        // ook de functie van p zou mogen overnemen.
-        const huidigePersoon = personMap[huidigePersoonId];
-        const magRuilen = huidigePersoon && (huidigePersoon.functies || []).some((f) => f.code === huidigeFunctieVanP);
-        if (magRuilen) ruil.push({ ...p, ruilFunctie: huidigeFunctieVanP });
+        return { vrij, ruil };
       }
-    });
 
-    return { vrij, ruil };
-  }
-
-  return (
-    <div className="bg-[#16181D] border border-[#262A33] rounded-xl overflow-hidden">
-      <div className="px-4 py-3 flex items-center justify-between border-b border-[#1F222A] gap-2">
-        <div className="min-w-0">
-          <div className="font-medium text-[#E8E6E1] text-sm capitalize">{formatDateNL(dienst.datum)}</div>
-          {weerPerDatum && <WeerBadge datum={dienst.datum} weerPerDatum={weerPerDatum} />}
-          {taak && (
-            <div className="text-[11px] text-[#8AA0B5] mt-0.5 flex items-center gap-1">
-              <span>🧹</span> {taak}
+      return (
+        <div className="bg-[#16181D] border border-[#262A33] rounded-xl overflow-hidden">
+          <div className="px-4 py-3 flex items-center justify-between border-b border-[#1F222A] gap-2">
+            <div className="min-w-0">
+              <div className="font-medium text-[#E8E6E1] text-sm capitalize">{formatDateNL(dienst.datum)}</div>
+              {weerPerDatum && <WeerBadge datum={dienst.datum} weerPerDatum={weerPerDatum} />}
+              {taak && (
+                <div className="text-[11px] text-[#8AA0B5] mt-0.5 flex items-center gap-1">
+                  <span>🧹</span> {taak}
+                </div>
+              )}
             </div>
-          )}
-        </div>
-        {heeftTekort && (
-          <div className="flex items-center gap-1 text-[#E0A33D] text-[11px] font-medium flex-shrink-0">
-            ⚠ Tekort: {dienst.tekorten.join(", ")}
-          </div>
-        )}
-      </div>
-      {beschikbaarMode ? (
-        <div className="p-3">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-[11px] uppercase tracking-wider text-[#6B7280]">Wijzigen personeel</div>
-            <div className="flex gap-1.5">
-              <button onClick={() => onSetAlle(dienst.id, true)} className="text-[10px] font-medium text-[#7FAE8C] hover:text-[#A8D5B5]">Iedereen aan</button>
-              <span className="text-[#3A3E47]">·</span>
-              <button onClick={() => onSetAlle(dienst.id, false)} className="text-[10px] font-medium text-[#6B7280] hover:text-[#8A8F9C]">Iedereen uit</button>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-1">
-            {Object.values(personMap).map((p) => {
-              const actief = (dienst.beschikbaar || []).includes(p.id);
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => onToggleBeschikbaar(dienst.id, p.id, !actief)}
-                  className={"flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[13px] font-medium transition-colors " + (actief ? "bg-[#1F3A2E] text-[#A8D5B5]" : "bg-[#1A1D23] text-[#5A5F68] line-through")}
-                >
-                  <span className={"w-3 h-3 rounded-full flex items-center justify-center flex-shrink-0 border " + (actief ? "bg-[#3D6B4C] border-[#3D6B4C]" : "border-[#3A3E47]")}>
-                    {actief && <span className="text-[8px] text-[#101216]">✓</span>}
-                  </span>
-                  <span className="truncate">{p.naam}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ) : (
-        <div className="p-3 grid grid-cols-2 gap-2">
-          {FUNCTIE_ORDER.map((code) =>
-            (dienst.toewijzing?.[code] || []).length > 0 ? (
-              dienst.toewijzing[code].map((pid) => {
-                const isHandmatig = handmatigSet.has(pid);
-                return (
-                  <div key={code + pid}>
-                    <div className="flex items-center gap-1">
-                      <div className="flex-1 min-w-0">
-                        <PersonChip naam={personMap[pid]?.naam || "?"} code={code} />
-                      </div>
-                      {onWijzigToewijzing && (
-                        <button
-                          onClick={() => setWijzigSlot({ code, persoonId: pid })}
-                          title="Wijzig of ruil deze toewijzing"
-                          className="text-[#5A5F68] hover:text-[#C9A24B] text-xs flex-shrink-0 px-1"
-                        >
-                          ✎
-                        </button>
-                      )}
-                    </div>
-                    {isHandmatig && (
-                      <div className="text-[9px] text-[#C9A24B] mt-0.5 px-1">✋ handmatig aangepast</div>
-                    )}
-                  </div>
-                );
-              })
-            ) : (
-              <div key={code} className="flex items-center gap-2 rounded-lg px-3 py-2 bg-[#1A1D23] border border-dashed border-[#3A3320]">
-                <FunctieBadge code={code} />
-                <span className="text-[#6B7280] text-xs italic flex-1">{dienst.toewijzing ? "niet ingevuld" : "nog niet ingedeeld"}</span>
-                {onWijzigToewijzing && dienst.toewijzing && (
-                  <button
-                    onClick={() => setWijzigSlot({ code, persoonId: null })}
-                    title="Vul deze plek handmatig in"
-                    className="text-[#5A5F68] hover:text-[#C9A24B] text-xs flex-shrink-0"
-                  >
-                    ✎
-                  </button>
-                )}
+            {heeftTekort && (
+              <div className="flex items-center gap-1 text-[#E0A33D] text-[11px] font-medium flex-shrink-0">
+                ⚠ Tekort: {dienst.tekorten.join(", ")}
               </div>
-            )
-          )}
-        </div>
-      )}
-
-      {wijzigSlot && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setWijzigSlot(null)}>
-          <div
-            className="bg-[#16181D] border border-[#2A2E37] rounded-xl p-4 max-w-sm w-full max-h-[70vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="text-[#E8E6E1] font-semibold text-sm mb-1">
-              {wijzigSlot.persoonId ? "Wijzig of ruil deze plek" : "Vul deze plek handmatig in"}
-            </div>
-            <div className="text-[11px] text-[#6B7280] mb-3">
-              <FunctieBadge code={wijzigSlot.code} small /> {FUNCTIES.find((f) => f.code === wijzigSlot.code)?.label}
-              {wijzigSlot.persoonId && <> · momenteel {personMap[wijzigSlot.persoonId]?.naam}</>}
-            </div>
-            <div className="space-y-1">
-              {(() => {
-                const { vrij, ruil } = kandidatenVoor(wijzigSlot.code, wijzigSlot.persoonId);
-                if (vrij.length === 0 && ruil.length === 0) {
-                  return <div className="text-[11px] text-[#5A5F68] px-2 py-1.5">Geen bevoegde mensen beschikbaar.</div>;
-                }
-                return (
-                  <>
-                    {vrij.map((kp) => (
-                      <button
-                        key={kp.id}
-                        onClick={() => { onWijzigToewijzing(dienst.id, wijzigSlot.code, wijzigSlot.persoonId, kp.id); setWijzigSlot(null); }}
-                        className="w-full text-left text-[13px] text-[#E8E6E1] hover:bg-[#1F222A] rounded-md px-3 py-2"
-                      >
-                        {kp.naam}
-                      </button>
-                    ))}
-                    {ruil.length > 0 && vrij.length > 0 && <div className="border-t border-[#2A2E37] my-1" />}
-                    {ruil.map((kp) => (
-                      <button
-                        key={kp.id}
-                        onClick={() => { onWijzigToewijzing(dienst.id, wijzigSlot.code, wijzigSlot.persoonId, kp.id); setWijzigSlot(null); }}
-                        className="w-full text-left text-[13px] text-[#E8E6E1] hover:bg-[#1F222A] rounded-md px-3 py-2 flex items-center justify-between gap-2"
-                      >
-                        <span>{kp.naam}</span>
-                        <span className="text-[10px] text-[#8AA0B5] flex-shrink-0">↔ ruilt met {personMap[wijzigSlot.persoonId]?.naam}</span>
-                      </button>
-                    ))}
-                  </>
-                );
-              })()}
-            </div>
-            <button onClick={() => setWijzigSlot(null)} className="w-full text-center text-[12px] text-[#6B7280] hover:text-[#8A8F9C] mt-3 pt-2 border-t border-[#2A2E37]">
-              Annuleren
-            </button>
+            )}
           </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Dagstaat({ dienst, personMap, weerPerDatum }) {
-  if (!dienst) {
-    return (
-      <div className="bg-[#16181D] border border-[#2A2E37] rounded-xl p-4 mb-5">
-        <div className="text-[11px] uppercase tracking-wider text-[#6B7280] mb-1">Vandaag</div>
-        <div className="text-[#5A5F68] text-sm italic">Geen dienst gepland voor vandaag.</div>
-      </div>
-    );
-  }
-  const heeftTekort = dienst.tekorten && dienst.tekorten.length > 0;
-  const taak = schoonmaakTaakVoor(dienst.datum);
-  return (
-    <div className="bg-gradient-to-br from-[#1C2018] to-[#16181D] border border-[#3D6B4C]/40 rounded-xl p-4 mb-5 shadow-lg shadow-black/20">
-      <div className="flex items-center justify-between mb-3 gap-2">
-        <div className="min-w-0">
-          <div className="text-[10px] uppercase tracking-widest text-[#7FAE8C] font-semibold mb-0.5">Dagstaat · Vandaag</div>
-          <div className="text-[#E8E6E1] font-bold text-base capitalize">{formatDateNL(dienst.datum)}</div>
-          {weerPerDatum && <WeerBadge datum={dienst.datum} weerPerDatum={weerPerDatum} />}
-          {taak && (
-            <div className="text-[12px] text-[#8AA0B5] mt-1 flex items-center gap-1">
-              <span>🧹</span> {taak}
-            </div>
-          )}
-        </div>
-        {heeftTekort && (
-          <div className="flex items-center gap-1 text-[#E0A33D] text-[11px] font-medium bg-[#1F1B12] border border-[#3A3320] rounded-md px-2 py-1 flex-shrink-0">
-            ⚠ Tekort: {dienst.tekorten.join(", ")}
-          </div>
-        )}
-      </div>
-      {dienst.toewijzing ? (
-        <div className="grid grid-cols-2 gap-2">
-          {FUNCTIE_ORDER.map((code) =>
-            (dienst.toewijzing?.[code] || []).length > 0 ? (
-              dienst.toewijzing[code].map((pid) => <PersonChip key={code + pid} naam={personMap[pid]?.naam || "?"} code={code} />)
-            ) : (
-              <div key={code} className="flex items-center gap-2 rounded-lg px-3 py-2 bg-[#1A1D23] border border-dashed border-[#3A3320]">
-                <FunctieBadge code={code} />
-                <span className="text-[#6B7280] text-xs italic">niet ingevuld</span>
+          {beschikbaarMode ? (
+            <div className="p-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-[11px] uppercase tracking-wider text-[#6B7280]">Wijzigen personeel</div>
+                <div className="flex gap-1.5">
+                  <button onClick={() => onSetAlle(dienst.id, true)} className="text-[10px] font-medium text-[#7FAE8C] hover:text-[#A8D5B5]">Iedereen aan</button>
+                  <span className="text-[#3A3E47]">·</span>
+                  <button onClick={() => onSetAlle(dienst.id, false)} className="text-[10px] font-medium text-[#6B7280] hover:text-[#8A8F9C]">Iedereen uit</button>
+                </div>
               </div>
-            )
-          )}
-        </div>
-      ) : (
-        <div className="text-[#5A5F68] text-sm italic">Nog niet ingedeeld.</div>
-      )}
-    </div>
-  );
-}
-
-// ---------- Guest view ----------
-function GastWeergave({ onGoToLogin }) {
-  const [data, setData] = useState(null);
-  const [error, setError] = useState("");
-  const weerPerDatum = useWeerAlmere();
-  const { licht, wisselThema } = useThema();
-
-  useEffect(() => {
-    function haalData() {
-      fetch(API_BASE + "/api/rooster")
-        .then((r) => r.json())
-        .then((d) => { setData(d); setError(""); })
-        .catch(() => setError("Kon het rooster niet laden."));
-    }
-    haalData();
-    const interval = setInterval(haalData, 2 * 60 * 1000); // elke 2 minuten
-    return () => clearInterval(interval);
-  }, []);
-
-  const personMap = useMemo(() => {
-    const m = {};
-    (data?.personen || []).forEach((p) => (m[p.id] = p));
-    return m;
-  }, [data]);
-
-  if (error) return <div className="min-h-screen bg-[#101216] flex items-center justify-center text-[#E08A7A] text-sm p-6">{error}</div>;
-  if (!data) return <div className="min-h-screen bg-[#101216] flex items-center justify-center text-[#6B7280] text-sm">Laden...</div>;
-
-  const sorted = [...(data.diensten || [])].sort((a, b) => a.datum.localeCompare(b.datum));
-  const vandaag = todayISO();
-  const dienstVandaag = sorted.find((d) => d.datum === vandaag);
-  const overige = sorted.filter((d) => d.datum !== vandaag && d.datum >= vandaag);
-
-  return (
-    <div className="min-h-screen bg-[#101216]">
-      <div className="sticky top-0 z-10 bg-[#101216]/95 backdrop-blur border-b border-[#1F222A] px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-md bg-[#B5483D] flex items-center justify-center flex-shrink-0 overflow-hidden">
-            <img src={LOGO_URL} alt="Logo" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = "none"; e.target.parentElement.innerHTML = '<span class="text-[#101216] font-bold text-sm">D</span>'; }} />
-          </div>
-          <div>
-            <div className="text-[#E8E6E1] font-bold text-base leading-tight">D-Ploeg Veluwsekant</div>
-            <div className="text-[#6B7280] text-[11px] uppercase tracking-wider">Alleen-lezen</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 flex-shrink-0">
-          <ThemaKnop licht={licht} onClick={wisselThema} compact />
-          <PrintKnop diensten={data.diensten || []} personen={data.personen || []} />
-          <button
-            onClick={onGoToLogin}
-            className="text-[11px] font-medium text-[#8A8F9C] hover:text-[#E8E6E1] border border-[#2A2E37] rounded-lg px-3 py-1.5 flex-shrink-0"
-          >
-            Inloggen als beheerder
-          </button>
-        </div>
-      </div>
-      <div className="px-4 py-4 max-w-2xl mx-auto">
-        <Dagstaat dienst={dienstVandaag} personMap={personMap} weerPerDatum={weerPerDatum} />
-        {overige.length > 0 && <div className="text-[11px] uppercase tracking-wider text-[#6B7280] mb-2 px-1">Komende diensten</div>}
-        {sorted.length === 0 ? (
-          <EmptyState title="Nog geen diensten gepland" body="Zodra de beheerder diensten heeft ingedeeld, verschijnen ze hier." />
-        ) : (
-          <div className="space-y-3 mb-6">
-            {overige.map((d) => <DienstKaart key={d.id} dienst={d} personMap={personMap} weerPerDatum={weerPerDatum} />)}
-          </div>
-        )}
-        {(data.personen || []).length > 0 && (
-          <VerdelingTabel personen={data.personen} diensten={data.diensten || []} />
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ---------- Login ----------
-function LoginScherm({ api, onLoggedIn, onGuest }) {
-  const [gebruikersnaam, setGebruikersnaam] = useState("");
-  const [wachtwoord, setWachtwoord] = useState("");
-  const [error, setError] = useState("");
-  const [bezig, setBezig] = useState(false);
-  const { licht, wisselThema } = useThema();
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setError("");
-    setBezig(true);
-    try {
-      await api.login(gebruikersnaam.trim(), wachtwoord);
-      onLoggedIn();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBezig(false);
-    }
-  }
-
-  return (
-    <div className="min-h-screen bg-[#101216] flex items-center justify-center p-6">
-      <div className="w-full max-w-sm">
-        <div className="flex items-center gap-3 mb-8 justify-center">
-          <div className="w-11 h-11 rounded-lg bg-[#B5483D] flex items-center justify-center flex-shrink-0 overflow-hidden">
-            <img src={LOGO_URL} alt="Logo" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = "none"; e.target.parentElement.innerHTML = '<span class="text-[#101216] font-bold text-lg">D</span>'; }} />
-          </div>
-          <div>
-            <div className="text-[#E8E6E1] font-bold text-lg leading-tight tracking-tight">D-Ploeg Veluwsekant</div>
-            <div className="text-[#6B7280] text-xs uppercase tracking-widest">Beheer</div>
-          </div>
-          <ThemaKnop licht={licht} onClick={wisselThema} />
-        </div>
-        <form onSubmit={handleSubmit} className="bg-[#16181D] border border-[#262A33] rounded-xl p-6 space-y-4">
-          <div>
-            <label className="block text-xs uppercase tracking-wider text-[#8A8F9C] mb-1.5">Gebruikersnaam</label>
-            <input value={gebruikersnaam} onChange={(e) => setGebruikersnaam(e.target.value)} className="w-full bg-[#1C1F26] border border-[#2E323C] rounded-lg px-3 py-2.5 text-[#E8E6E1] text-sm outline-none focus:border-[#B5483D]" autoComplete="username" />
-          </div>
-          <div>
-            <label className="block text-xs uppercase tracking-wider text-[#8A8F9C] mb-1.5">Wachtwoord</label>
-            <input type="password" value={wachtwoord} onChange={(e) => setWachtwoord(e.target.value)} className="w-full bg-[#1C1F26] border border-[#2E323C] rounded-lg px-3 py-2.5 text-[#E8E6E1] text-sm outline-none focus:border-[#B5483D]" autoComplete="current-password" />
-          </div>
-          {error && <div className="text-[#E08A7A] text-xs">{error}</div>}
-          <button type="submit" disabled={bezig} className="w-full bg-[#B5483D] hover:bg-[#9E3E34] disabled:opacity-50 text-[#101216] font-semibold text-sm rounded-lg py-2.5 transition-colors">
-            {bezig ? "Bezig..." : "Inloggen"}
-          </button>
-        </form>
-        <button onClick={onGuest} className="w-full mt-4 text-[#6B7280] hover:text-[#8A8F9C] text-sm">Bekijk rooster als gast</button>
-      </div>
-    </div>
-  );
-}
-
-// ---------- Admin: Team ----------
-function TeamTab({ api, refreshKey, bumpRefresh }) {
-  const [personen, setPersonen] = useState([]);
-  const [nieuweNaam, setNieuweNaam] = useState("");
-  const [laden, setLaden] = useState(true);
-  const { licht } = useThema();
-
-  useEffect(() => {
-    setLaden(true);
-    api.call("/api/personen").then((d) => setPersonen(d.personen)).finally(() => setLaden(false));
-  }, [refreshKey]);
-
-  // Stille auto-refresh elke 2 minuten — geen laad-indicator, geen verstoring van open invoervelden.
-  useEffect(() => {
-    const interval = setInterval(() => {
-      api.call("/api/personen").then((d) => setPersonen(d.personen)).catch(() => {});
-    }, 2 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [api]);
-
-  async function addPersoon() {
-    const naam = nieuweNaam.trim();
-    if (!naam || personen.length >= MAX_NAMEN) return;
-    setNieuweNaam("");
-    try {
-      const result = await api.call("/api/personen", { method: "POST", body: JSON.stringify({ naam }) });
-      setPersonen((prev) => [...prev, { id: result.id, naam: result.naam, functies: [] }]);
-    } catch (e) {
-      alert(e.message);
-    }
-  }
-  async function removePersoon(id) {
-    setPersonen((prev) => prev.filter((p) => p.id !== id));
-    try {
-      await api.call("/api/personen/" + id, { method: "DELETE" });
-    } catch (e) {
-      alert(e.message);
-      bumpRefresh();
-    }
-  }
-  async function toggleFunctie(persoon, code) {
-    const heeft = persoon.functies.some((f) => f.code === code);
-    setPersonen((prev) =>
-      prev.map((p) => {
-        if (p.id !== persoon.id) return p;
-        return {
-          ...p,
-          functies: heeft
-            ? p.functies.filter((f) => f.code !== code)
-            : [...p.functies, { code, prioriteit: "vast" }],
-        };
-      })
-    );
-    try {
-      await api.call("/api/personen/" + persoon.id + "/functie", {
-        method: "POST",
-        body: JSON.stringify({ functie_code: code, actief: !heeft, prioriteit: "vast" }),
-      });
-    } catch (e) {
-      alert(e.message);
-      bumpRefresh();
-    }
-  }
-  async function togglePrioriteit(persoon, code) {
-    const f = persoon.functies.find((x) => x.code === code);
-    const nieuw = f.prioriteit === "vast" ? "reserve" : "vast";
-    setPersonen((prev) =>
-      prev.map((p) => {
-        if (p.id !== persoon.id) return p;
-        return { ...p, functies: p.functies.map((x) => (x.code === code ? { ...x, prioriteit: nieuw } : x)) };
-      })
-    );
-    try {
-      await api.call("/api/personen/" + persoon.id + "/functie", {
-        method: "POST",
-        body: JSON.stringify({ functie_code: code, actief: true, prioriteit: nieuw }),
-      });
-    } catch (e) {
-      alert(e.message);
-      bumpRefresh();
-    }
-  }
-
-  if (laden) return <div className="text-[#6B7280] text-sm">Laden...</div>;
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-[#E8E6E1] font-semibold text-base">Team</h2>
-        <span className="text-[11px] text-[#6B7280] tabular-nums">{personen.length}/{MAX_NAMEN}</span>
-      </div>
-      {personen.length < MAX_NAMEN && (
-        <div className="flex gap-2">
-          <input value={nieuweNaam} onChange={(e) => setNieuweNaam(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addPersoon()} placeholder="Naam toevoegen..." className="flex-1 bg-[#1C1F26] border border-[#2E323C] rounded-lg px-3 py-2 text-sm text-[#E8E6E1] outline-none focus:border-[#B5483D]" />
-          <button onClick={addPersoon} className="bg-[#2A2E37] hover:bg-[#343945] text-[#E8E6E1] rounded-lg px-3">+</button>
-        </div>
-      )}
-      {personen.length === 0 ? (
-        <EmptyState title="Nog geen teamleden" body="Voeg namen toe om te beginnen." />
-      ) : (
-        <div className="space-y-2">
-          {personen.map((p) => (
-            <div key={p.id} className="bg-[#16181D] border border-[#262A33] rounded-xl p-3">
-              <div className="flex items-center justify-between mb-2.5">
-                <span className="font-medium text-[#E8E6E1] text-sm">{p.naam}</span>
-                <button onClick={() => removePersoon(p.id)} className="text-[#5A5F68] hover:text-[#E08A7A] text-xs">verwijder</button>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {FUNCTIES.map((f) => {
-                  const actiefF = p.functies.find((x) => x.code === f.code);
-                  const isReserve = actiefF && actiefF.prioriteit === "reserve";
+              <div className="grid grid-cols-2 gap-1">
+                {Object.values(personMap).map((p) => {
+                  const actief = (dienst.beschikbaar || []).includes(p.id);
                   return (
-                    <div key={f.code} className="flex items-stretch rounded-md overflow-hidden border" style={{ borderColor: actiefF ? f.color + "66" : (licht ? "#D4CCC0" : "#2A2E37") }}>
-                      <button onClick={() => toggleFunctie(p, f.code)} className="text-xs font-medium px-2.5 py-1.5" style={actiefF ? { background: f.color + "22", color: f.color } : { background: licht ? "#ECE7DE" : "#1A1D23", color: licht ? "#8C8474" : "#5A5F68" }}>
-                        {f.code} · {f.label}
-                      </button>
-                      {actiefF && (
-                        <button onClick={() => togglePrioriteit(p, f.code)} className="text-[10px] font-semibold px-2 py-1.5 border-l" style={isReserve ? { background: licht ? "#ECE7DE" : "#1A1D23", color: licht ? "#6B6557" : "#8A8F9C", borderColor: f.color + "40" } : { background: f.color + "33", color: f.color, borderColor: f.color + "40" }}>
-                          {isReserve ? "RES" : "VAST"}
-                        </button>
-                      )}
-                    </div>
+                    <button
+                      key={p.id}
+                      onClick={() => onToggleBeschikbaar(dienst.id, p.id, !actief)}
+                      className={"flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[13px] font-medium transition-colors " + (actief ?
+                        "bg-[#1F3A2E] text-[#A8D5B5]" :
+                        "bg-[#1A1D23] text-[#5A5F68] line-through")}
+                    >
+                      <span className={"w-3 h-3 rounded-full flex items-center justify-center flex-shrink-0 border " + (actief ?
+                        "bg-[#3D6B4C] border-[#3D6B4C]" :
+                        "border-[#3A3E47]")}>
+                        {actief && <span className="text-[8px] text-[#101216]">✓</span>}
+                      </span>
+                      <span className="truncate">{p.naam}</span>
+                    </button>
                   );
                 })}
               </div>
             </div>
-          ))}
-        </div>
-      )}
-      {personen.length > 0 && <p className="text-[11px] text-[#5A5F68] px-1">Tik op VAST/RES om te wisselen. Vaste mensen gaan altijd voor reserves.</p>}
-    </div>
-  );
-}
+          ) : (
+            <div className="p-3 grid grid-cols-2 gap-2">
+              {FUNCTIE_ORDER.map((code) =>
+                (dienst.toewijzing?.[code] || []).length > 0 ? (
+                  dienst.toewijzing[code].map((pid) => {
+                    const isHandmatig = handmatigSet.has(pid);
+                    return (
+                      <div key={code + pid}>
+                        <div className="flex items-center gap-1">
+                          <div className="flex-1 min-w-0">
+                            <PersonChip naam={personMap[pid]?.naam || "?"} code={code} />
+                          </div>
+                          {onWijzigToewijzing && (
+                            <button
+                              onClick={() => setWijzigSlot({ code, persoonId: pid })}
+                              title="Wijzig of ruil deze toewijzing"
+                              className="text-[#5A5F68] hover:text-[#C9A24B] text-xs flex-shrink-0 px-1"
+                            >
+                              ✎
+                            </button>
+                          )}
+                        </div>
+                        {isHandmatig && (
+                          <div className="text-[9px] text-[#C9A24B] mt-0.5 px-1">✋ handmatig aangepast</div>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div key={code} className="flex items-center gap-2 rounded-lg px-3 py-2 bg-[#1A1D23] border border-dashed border-[#3A3320]">
+                    <FunctieBadge code={code} />
+                    <span className="text-[#6B7280] text-xs italic flex-1">{dienst.toewijzing ? "niet ingevuld" :
+                      "nog niet ingedeeld"}</span>
+                    {onWijzigToewijzing && dienst.toewijzing && (
+                      <button
+                        onClick={() => setWijzigSlot({ code, persoonId: null })}
+                        title="Vul deze plek handmatig in"
+                        className="text-[#5A5F68] hover:text-[#C9A24B] text-xs flex-shrink-0"
+                      >
+                        ✎
+                      </button>
+                    )}
+                  </div>
+                )
+              )}
+            </div>
+          )}
 
-// ---------- Admin: Diensten ----------
-function DienstenTab({ api, refreshKey, bumpRefresh }) {
-  const [diensten, setDiensten] = useState([]);
-  const [personen, setPersonen] = useState([]);
-  const [laden, setLaden] = useState(true);
-  const [nieuweDatum, setNieuweDatum] = useState(todayISO());
-  const [editId, setEditId] = useState(null);
-  const [periodeMode, setPeriodeMode] = useState(false);
-  const [periodeStart, setPeriodeStart] = useState(todayISO());
-  const [periodeEinde, setPeriodeEinde] = useState(todayISO());
-  const [periodeInterval, setPeriodeInterval] = useState(4);
-  const weerPerDatum = useWeerAlmere();
-
-  useEffect(() => {
-    setLaden(true);
-    Promise.all([api.call("/api/diensten"), api.call("/api/personen")])
-      .then(([d, p]) => { setDiensten(d.diensten); setPersonen(p.personen); })
-      .finally(() => setLaden(false));
-  }, [refreshKey]);
-
-  // Stille auto-refresh elke 2 minuten — geen laad-indicator, geen verstoring van
-  // openstaande bewerkmodus (editId) of ingevoerde datums.
-  useEffect(() => {
-    const interval = setInterval(() => {
-      Promise.all([api.call("/api/diensten"), api.call("/api/personen")])
-        .then(([d, p]) => { setDiensten(d.diensten); setPersonen(p.personen); })
-        .catch(() => {});
-    }, 2 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [api]);
-
-  const personMap = useMemo(() => {
-    const m = {};
-    personen.forEach((p) => (m[p.id] = p));
-    return m;
-  }, [personen]);
-
-  async function addDienst() {
-    if (!nieuweDatum) return;
-    try {
-      await api.call("/api/diensten", { method: "POST", body: JSON.stringify({ datum: nieuweDatum }) });
-      bumpRefresh();
-    } catch (e) { alert(e.message); }
-  }
-  async function addPeriode() {
-    try {
-      await api.call("/api/diensten/periode", { method: "POST", body: JSON.stringify({ van: periodeStart, tot: periodeEinde, interval: Number(periodeInterval) }) });
-      setPeriodeMode(false);
-      bumpRefresh();
-    } catch (e) { alert(e.message); }
-  }
-  async function removeDienst(id) {
-    setDiensten((prev) => prev.filter((d) => d.id !== id));
-    try {
-      await api.call("/api/diensten/" + id, { method: "DELETE" });
-    } catch (e) {
-      alert(e.message);
-      bumpRefresh();
-    }
-  }
-  async function toggleBeschikbaar(dienstId, persoonId, beschikbaar) {
-    setDiensten((prev) =>
-      prev.map((d) => {
-        if (d.id !== dienstId) return d;
-        const huidige = d.beschikbaar || [];
-        return {
-          ...d,
-          beschikbaar: beschikbaar ? [...huidige, persoonId] : huidige.filter((id) => id !== persoonId),
-        };
-      })
-    );
-    try {
-      await api.call("/api/diensten/" + dienstId + "/beschikbaar", { method: "POST", body: JSON.stringify({ persoon_id: persoonId, beschikbaar }) });
-    } catch (e) {
-      alert(e.message);
-      bumpRefresh();
-    }
-  }
-  async function setAlle(dienstId, aan) {
-    setDiensten((prev) =>
-      prev.map((d) => (d.id === dienstId ? { ...d, beschikbaar: aan ? personen.map((p) => p.id) : [] } : d))
-    );
-    try {
-      await api.call("/api/diensten/" + dienstId + "/beschikbaar-alle", { method: "POST", body: JSON.stringify({ aan }) });
-    } catch (e) {
-      alert(e.message);
-      bumpRefresh();
-    }
-  }
-  async function indelenEen(dienstId) {
-    try {
-      const result = await api.call("/api/diensten/" + dienstId + "/indelen", { method: "POST" });
-      setDiensten((prev) =>
-        prev.map((d) => (d.id === dienstId ? { ...d, toewijzing: result.toewijzing, tekorten: result.tekorten, handmatigPersonen: [] } : d))
-      );
-    } catch (e) {
-      alert(e.message);
-    }
-  }
-  async function indelenAlles() {
-    try {
-      await api.call("/api/diensten/indelen-alles", { method: "POST" });
-      bumpRefresh();
-    } catch (e) { alert(e.message); }
-  }
-  async function wijzigToewijzing(dienstId, functieCode, oudePersoonId, nieuwePersoonId) {
-    try {
-      await api.call("/api/diensten/" + dienstId + "/wijzig-toewijzing", {
-        method: "POST",
-        body: JSON.stringify({ functie_code: functieCode, oude_persoon_id: oudePersoonId, nieuwe_persoon_id: nieuwePersoonId }),
-      });
-      bumpRefresh();
-    } catch (e) {
-      alert(e.message);
-    }
-  }
-
-  if (laden) return <div className="text-[#6B7280] text-sm">Laden...</div>;
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-[#E8E6E1] font-semibold text-base">Diensten</h2>
-        <div className="flex items-center gap-2">
-          <PrintKnop diensten={diensten} personen={personen} />
-          {diensten.length > 0 && (
-            <button onClick={indelenAlles} disabled={personen.length === 0} className="text-[11px] font-medium text-[#101216] bg-[#C9A24B] hover:bg-[#B8923F] disabled:opacity-30 rounded-lg px-3 py-1.5">Indelen</button>
+          {wijzigSlot && (
+            <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() =>
+                setWijzigSlot(null)}>
+              <div
+                className="bg-[#16181D] border border-[#2A2E37] rounded-xl p-4 max-w-sm w-full max-h-[70vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="text-[#E8E6E1] font-semibold text-sm mb-1">
+                  {wijzigSlot.persoonId ? "Wijzig of ruil deze plek" : "Vul deze plek handmatig in"}
+                </div>
+                <div className="text-[11px] text-[#6B7280] mb-3">
+                  <FunctieBadge code={wijzigSlot.code} small /> {FUNCTIES.find((f) => f.code === wijzigSlot.code)
+                    ?.label}
+                  {wijzigSlot.persoonId && <> · momenteel {personMap[wijzigSlot.persoonId]?.naam}</>}
+                </div>
+                <div className="space-y-1">
+                  {(() => {
+                    const { vrij, ruil } = kandidatenVoor(wijzigSlot.code, wijzigSlot.persoonId);
+                    if (vrij.length === 0 && ruil.length === 0) {
+                      return <div className="text-[11px] text-[#5A5F68] px-2 py-1.5">Geen bevoegde mensen beschikbaar.</div>;
+                    }
+                    return (
+                      <>
+                        {vrij.map((kp) => (
+                          <button
+                            key={kp.id}
+                            onClick={() => { onWijzigToewijzing(dienst.id, wijzigSlot.code, wijzigSlot.persoonId,
+                                kp.id);
+                              setWijzigSlot(null); }}
+                            className="w-full text-left text-[13px] text-[#E8E6E1] hover:bg-[#1F222A] rounded-md px-3 py-2"
+                          >
+                            {kp.naam}
+                          </button>
+                        ))}
+                        {ruil.length > 0 && vrij.length > 0 && <div className="border-t border-[#2A2E37] my-1" />}
+                        {ruil.map((kp) => (
+                          <button
+                            key={kp.id}
+                            onClick={() => { onWijzigToewijzing(dienst.id, wijzigSlot.code, wijzigSlot.persoonId,
+                                kp.id);
+                              setWijzigSlot(null); }}
+                            className="w-full text-left text-[13px] text-[#E8E6E1] hover:bg-[#1F222A] rounded-md px-3 py-2 flex items-center justify-between gap-2"
+                          >
+                            <span>{kp.naam}</span>
+                            <span className="text-[10px] text-[#8AA0B5] flex-shrink-0">↔ ruilt met {personMap[
+                                wijzigSlot.persoonId]?.naam}</span>
+                          </button>
+                        ))}
+                      </>
+                    );
+                  })()}
+                </div>
+                <button onClick={() => setWijzigSlot(null)} className="w-full text-center text-[12px] text-[#6B7280] hover:text-[#8A8F9C] mt-3 pt-2 border-t border-[#2A2E37]">
+                  Annuleren
+                </button>
+              </div>
+            </div>
           )}
         </div>
-      </div>
+      );
+    }
 
-      <div className="flex gap-1 bg-[#16181D] border border-[#262A33] rounded-xl p-1">
-        <button onClick={() => setPeriodeMode(false)} className={"flex-1 text-xs font-medium rounded-lg py-1.5 " + (!periodeMode ? "bg-[#2A2E37] text-[#E8E6E1]" : "text-[#6B7280]")}>Losse datum</button>
-        <button onClick={() => setPeriodeMode(true)} className={"flex-1 text-xs font-medium rounded-lg py-1.5 " + (periodeMode ? "bg-[#2A2E37] text-[#E8E6E1]" : "text-[#6B7280]")}>Periode in 1x</button>
-      </div>
-
-      {!periodeMode ? (
-        <div className="flex gap-2">
-          <input type="date" value={nieuweDatum} onChange={(e) => setNieuweDatum(e.target.value)} className="flex-1 bg-[#1C1F26] border border-[#2E323C] rounded-lg px-3 py-2 text-sm text-[#E8E6E1]" />
-          <button onClick={addDienst} className="bg-[#2A2E37] hover:bg-[#343945] text-[#E8E6E1] rounded-lg px-3">+</button>
-        </div>
-      ) : (
-        <div className="bg-[#16181D] border border-[#262A33] rounded-xl p-3 space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="block text-[10px] uppercase tracking-wider text-[#6B7280] mb-1">Van</label>
-              <input type="date" value={periodeStart} onChange={(e) => setPeriodeStart(e.target.value)} className="w-full bg-[#1C1F26] border border-[#2E323C] rounded-lg px-2.5 py-2 text-sm text-[#E8E6E1]" />
-            </div>
-            <div>
-              <label className="block text-[10px] uppercase tracking-wider text-[#6B7280] mb-1">Tot en met</label>
-              <input type="date" value={periodeEinde} onChange={(e) => setPeriodeEinde(e.target.value)} className="w-full bg-[#1C1F26] border border-[#2E323C] rounded-lg px-2.5 py-2 text-sm text-[#E8E6E1]" />
-            </div>
+    function Dagstaat({ dienst, personMap, weerPerDatum }) {
+      if (!dienst) {
+        return (
+          <div className="bg-[#16181D] border border-[#2A2E37] rounded-xl p-4 mb-5">
+            <div className="text-[11px] uppercase tracking-wider text-[#6B7280] mb-1">Vandaag</div>
+            <div className="text-[#5A5F68] text-sm italic">Geen dienst gepland voor vandaag.</div>
           </div>
-          <div>
-            <label className="block text-[10px] uppercase tracking-wider text-[#6B7280] mb-1">Elke hoeveel dagen?</label>
-            <input type="number" min="1" value={periodeInterval} onChange={(e) => setPeriodeInterval(e.target.value)} className="w-20 bg-[#1C1F26] border border-[#2E323C] rounded-lg px-2.5 py-2 text-sm text-[#E8E6E1]" />
-          </div>
-          <button onClick={addPeriode} className="w-full bg-[#C9A24B] hover:bg-[#B8923F] text-[#101216] font-semibold text-sm rounded-lg py-2.5">Diensten aanmaken</button>
-        </div>
-      )}
-
-      {personen.length === 0 && <div className="text-[#E0A33D] text-xs bg-[#1F1B12] border border-[#3A3320] rounded-lg px-3 py-2">Voeg eerst teamleden toe.</div>}
-
-      {diensten.length === 0 ? (
-        <EmptyState title="Nog geen diensten" body="Voeg een datum toe, of maak een hele periode in 1x aan." />
-      ) : (
-        <div className="space-y-3">
-          {diensten.map((d) => (
-            <div key={d.id}>
-              <div className="flex items-center justify-between mb-1.5 px-1">
-                <button onClick={() => setEditId(editId === d.id ? null : d.id)} className="text-[11px] uppercase tracking-wider text-[#6B7280] hover:text-[#8A8F9C]">
-                  {editId === d.id ? "Klaar met wijzigen" : "Beschikbaar: " + (d.beschikbaar || []).length + "/" + personen.length}
-                </button>
-                <button onClick={() => removeDienst(d.id)} className="text-[#5A5F68] hover:text-[#E08A7A] text-xs">verwijder</button>
-              </div>
-              <DienstKaart dienst={d} personMap={personMap} beschikbaarMode={editId === d.id} onToggleBeschikbaar={toggleBeschikbaar} onSetAlle={setAlle} weerPerDatum={weerPerDatum} onWijzigToewijzing={wijzigToewijzing} />
-              {editId !== d.id && (
-                <div className="flex justify-end mt-1.5">
-                  <button onClick={() => indelenEen(d.id)} disabled={(d.beschikbaar || []).length === 0} className="text-[11px] font-medium text-[#C9A24B] hover:text-[#DDB35E] disabled:opacity-30">Opnieuw indelen</button>
+        );
+      }
+      const heeftTekort = dienst.tekorten && dienst.tekorten.length > 0;
+      const taak = schoonmaakTaakVoor(dienst.datum);
+      return (
+        <div className="bg-gradient-to-br from-[#1C2018] to-[#16181D] border border-[#3D6B4C]/40 rounded-xl p-4 mb-5 shadow-lg shadow-black/20">
+          <div className="flex items-center justify-between mb-3 gap-2">
+            <div className="min-w-0">
+              <div className="text-[10px] uppercase tracking-widest text-[#7FAE8C] font-semibold mb-0.5">Dagstaat ·
+                Vandaag</div>
+              <div className="text-[#E8E6E1] font-bold text-base capitalize">{formatDateNL(dienst.datum)}</div>
+              {weerPerDatum && <WeerBadge datum={dienst.datum} weerPerDatum={weerPerDatum} />}
+              {taak && (
+                <div className="text-[12px] text-[#8AA0B5] mt-1 flex items-center gap-1">
+                  <span>🧹</span> {taak}
                 </div>
               )}
             </div>
-          ))}
+            {heeftTekort && (
+              <div className="flex items-center gap-1 text-[#E0A33D] text-[11px] font-medium bg-[#1F1B12] border border-[#3A3320] rounded-md px-2 py-1 flex-shrink-0">
+                ⚠ Tekort: {dienst.tekorten.join(", ")}
+              </div>
+            )}
+          </div>
+          {dienst.toewijzing ? (
+            <div className="grid grid-cols-2 gap-2">
+              {FUNCTIE_ORDER.map((code) =>
+                (dienst.toewijzing?.[code] || []).length > 0 ? (
+                  dienst.toewijzing[code].map((pid) => <PersonChip key={code + pid} naam={personMap[pid]?.naam ||
+                      "?"} code={code} />)
+                ) : (
+                  <div key={code} className="flex items-center gap-2 rounded-lg px-3 py-2 bg-[#1A1D23] border border-dashed border-[#3A3320]">
+                    <FunctieBadge code={code} />
+                    <span className="text-[#6B7280] text-xs italic">niet ingevuld</span>
+                  </div>
+                )
+              )}
+            </div>
+          ) : (
+            <div className="text-[#5A5F68] text-sm italic">Nog niet ingedeeld.</div>
+          )}
         </div>
-      )}
-
-      {personen.length > 0 && diensten.length > 0 && <VerdelingTabel personen={personen} diensten={diensten} />}
-    </div>
-  );
-}
-
-// ---------- Print: maandoverzicht (liggend, namen × datums, functiecode per cel) ----------
-function maandLabel(jaarMaand) {
-  const [jaar, maand] = jaarMaand.split("-").map(Number);
-  const d = new Date(jaar, maand - 1, 1);
-  return d.toLocaleDateString("nl-NL", { month: "long", year: "numeric" });
-}
-
-function beschikbareMaanden(diensten) {
-  const set = new Set();
-  diensten.forEach((d) => set.add(d.datum.slice(0, 7))); // "YYYY-MM"
-  return [...set].sort();
-}
-
-function PrintKnop({ diensten, personen }) {
-  const [open, setOpen] = useState(false);
-  const maanden = useMemo(() => beschikbareMaanden(diensten), [diensten]);
-  const [gekozenMaand, setGekozenMaand] = useState(() => maanden[maanden.length - 1] || "");
-
-  useEffect(() => {
-    if (!gekozenMaand && maanden.length > 0) setGekozenMaand(maanden[maanden.length - 1]);
-  }, [maanden]);
-
-  function afdrukken() {
-    window.print();
-  }
-
-  const dagenInMaand = useMemo(() => {
-    if (!gekozenMaand) return [];
-    const [jaar, maand] = gekozenMaand.split("-").map(Number);
-    const aantalDagen = new Date(jaar, maand, 0).getDate();
-    const datums = [];
-    for (let dag = 1; dag <= aantalDagen; dag++) {
-      datums.push(gekozenMaand + "-" + String(dag).padStart(2, "0"));
+      );
     }
-    return datums;
-  }, [gekozenMaand]);
 
-  const dienstPerDatum = useMemo(() => {
-    const m = {};
-    diensten.forEach((d) => (m[d.datum] = d));
-    return m;
-  }, [diensten]);
+    // ---------- Guest view ----------
+    function GastWeergave({ onGoToLogin }) {
+      const [data, setData] = useState(null);
+      const [error, setError] = useState("");
+      const weerPerDatum = useWeerAlmere();
+      const { licht, wisselThema } = useThema();
 
-  function functieVoor(persoonId, dienst) {
-    if (!dienst || !dienst.toewijzing) return "";
-    for (const code of FUNCTIE_ORDER) {
-      if ((dienst.toewijzing[code] || []).includes(persoonId)) return code;
-    }
-    return "";
-  }
+      useEffect(() => {
+        function haalData() {
+          fetch(API_BASE + "/api/rooster")
+            .then((r) => r.json())
+            .then((d) => { setData(d);
+              setError(""); })
+            .catch(() => setError("Kon het rooster niet laden."));
+        }
+        haalData();
+        const interval = setInterval(haalData, 2 * 60 * 1000);
+        return () => clearInterval(interval);
+      }, []);
 
-  if (maanden.length === 0) return null;
+      const personMap = useMemo(() => {
+        const m = {};
+        (data?.personen || []).forEach((p) => (m[p.id] = p));
+        return m;
+      }, [data]);
 
-  return (
-    <>
-      <button
-        onClick={() => setOpen(true)}
-        className="text-[11px] font-medium text-[#8A8F9C] hover:text-[#E8E6E1] border border-[#2A2E37] rounded-lg px-3 py-1.5 flex-shrink-0"
-      >
-        🖨️ Printen
-      </button>
+      if (error) return <div className="min-h-screen bg-[#101216] flex items-center justify-center text-[#E08A7A] text-sm p-6">{error}</div>;
+      if (!data) return <div className="min-h-screen bg-[#101216] flex items-center justify-center text-[#6B7280] text-sm">Laden...</div>;
 
-      {open && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setOpen(false)}>
-          <div
-            className="bg-[#16181D] border border-[#2A2E37] rounded-xl p-5 max-w-md w-full"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="text-[#E8E6E1] font-semibold text-base mb-3">Maandrooster printen</div>
-            <label className="block text-[11px] uppercase tracking-wider text-[#6B7280] mb-1.5">Maand</label>
-            <select
-              value={gekozenMaand}
-              onChange={(e) => setGekozenMaand(e.target.value)}
-              className="w-full bg-[#1C1F26] border border-[#2E323C] rounded-lg px-3 py-2 text-sm text-[#E8E6E1] outline-none focus:border-[#B5483D] mb-4 capitalize"
-            >
-              {maanden.map((m) => (
-                <option key={m} value={m} className="capitalize">{maandLabel(m)}</option>
-              ))}
-            </select>
-            <div className="flex gap-2">
-              <button onClick={() => setOpen(false)} className="flex-1 text-sm text-[#8A8F9C] hover:text-[#E8E6E1] border border-[#2A2E37] rounded-lg py-2">
-                Annuleren
-              </button>
-              <button onClick={afdrukken} className="flex-1 text-sm font-semibold text-[#101216] bg-[#C9A24B] hover:bg-[#B8923F] rounded-lg py-2">
-                Print voorbeeld openen
+      const sorted = [...(data.diensten || [])].sort((a, b) => a.datum.localeCompare(b.datum));
+      const vandaag = todayISO();
+      const dienstVandaag = sorted.find((d) => d.datum === vandaag);
+      const overige = sorted.filter((d) => d.datum !== vandaag && d.datum >= vandaag);
+
+      return (
+        <div className="min-h-screen bg-[#101216]">
+          <div className="sticky top-0 z-10 bg-[#101216]/95 backdrop-blur border-b border-[#1F222A] px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-md bg-[#B5483D] flex items-center justify-center flex-shrink-0 overflow-hidden">
+                <img src={LOGO_URL} alt="Logo" className="w-full h-full object-cover" onError={(e) => { e.target
+                    .style.display = "none";
+                  e.target.parentElement.innerHTML =
+                    '<span class="text-[#101216] font-bold text-sm">D</span>'; }} />
+              </div>
+              <div>
+                <div className="text-[#E8E6E1] font-bold text-base leading-tight">D-Ploeg Veluwsekant</div>
+                <div className="text-[#6B7280] text-[11px] uppercase tracking-wider">Alleen-lezen</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <ThemaKnop licht={licht} onClick={wisselThema} compact />
+              <PrintKnop diensten={data.diensten || []} personen={data.personen || []} />
+              <button
+                onClick={onGoToLogin}
+                className="text-[11px] font-medium text-[#8A8F9C] hover:text-[#E8E6E1] border border-[#2A2E37] rounded-lg px-3 py-1.5 flex-shrink-0"
+              >
+                Inloggen als beheerder
               </button>
             </div>
-            <p className="text-[10px] text-[#5A5F68] mt-3">
-              Kies in het printvenster van je browser de liggende stand (landscape) voor het beste resultaat.
-            </p>
+          </div>
+          <div className="px-4 py-4 max-w-2xl mx-auto">
+            <Dagstaat dienst={dienstVandaag} personMap={personMap} weerPerDatum={weerPerDatum} />
+            {overige.length > 0 && <div className="text-[11px] uppercase tracking-wider text-[#6B7280] mb-2 px-1">
+              Komende diensten</div>}
+            {sorted.length === 0 ? (
+              <EmptyState title="Nog geen diensten gepland" body="Zodra de beheerder diensten heeft ingedeeld, verschijnen ze hier." />
+            ) : (
+              <div className="space-y-3 mb-6">
+                {overige.map((d) => <DienstKaart key={d.id} dienst={d} personMap={personMap} weerPerDatum={
+                    weerPerDatum} />)}
+              </div>
+            )}
+            {(data.personen || []).length > 0 && (
+              <VerdelingTabel personen={data.personen} diensten={data.diensten || []} />
+            )}
           </div>
         </div>
-      )}
+      );
+    }
 
-      {/* Onzichtbaar op het scherm, alleen getoond aan de printer via @media print */}
-      <div id="print-root" className="print-only">
-        <div style={{ padding: "0", fontFamily: "Arial, sans-serif", color: "#000" }}>
-          <h1 style={{ fontSize: "16px", marginBottom: "2px", textTransform: "capitalize" }}>
-            D-Ploeg Veluwsekant — Maandrooster {gekozenMaand ? maandLabel(gekozenMaand) : ""}
-          </h1>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9px" }}>
-            <thead>
-              <tr>
-                <th style={{ border: "1px solid #999", padding: "3px 4px", textAlign: "left", background: "#eee" }}>Naam</th>
-                {dagenInMaand.map((datum) => (
-                  <th key={datum} style={{ border: "1px solid #999", padding: "2px", background: "#eee", minWidth: "20px" }}>
-                    {Number(datum.slice(8, 10))}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
+    // ---------- Login ----------
+    function LoginScherm({ api, onLoggedIn, onGuest }) {
+      const [gebruikersnaam, setGebruikersnaam] = useState("");
+      const [wachtwoord, setWachtwoord] = useState("");
+      const [error, setError] = useState("");
+      const [bezig, setBezig] = useState(false);
+      const { licht, wisselThema } = useThema();
+
+      async function handleSubmit(e) {
+        e.preventDefault();
+        setError("");
+        setBezig(true);
+        try {
+          await api.login(gebruikersnaam.trim(), wachtwoord);
+          onLoggedIn();
+        } catch (err) {
+          setError(err.message);
+        } finally {
+          setBezig(false);
+        }
+      }
+
+      return (
+        <div className="min-h-screen bg-[#101216] flex items-center justify-center p-6">
+          <div className="w-full max-w-sm">
+            <div className="flex items-center gap-3 mb-8 justify-center">
+              <div className="w-11 h-11 rounded-lg bg-[#B5483D] flex items-center justify-center flex-shrink-0 overflow-hidden">
+                <img src={LOGO_URL} alt="Logo" className="w-full h-full object-cover" onError={(e) => { e.target
+                    .style.display = "none";
+                  e.target.parentElement.innerHTML =
+                    '<span class="text-[#101216] font-bold text-lg">D</span>'; }} />
+              </div>
+              <div>
+                <div className="text-[#E8E6E1] font-bold text-lg leading-tight tracking-tight">D-Ploeg Veluwsekant</div>
+                <div className="text-[#6B7280] text-xs uppercase tracking-widest">Beheer</div>
+              </div>
+              <ThemaKnop licht={licht} onClick={wisselThema} />
+            </div>
+            <form onSubmit={handleSubmit} className="bg-[#16181D] border border-[#262A33] rounded-xl p-6 space-y-4">
+              <div>
+                <label className="block text-xs uppercase tracking-wider text-[#8A8F9C] mb-1.5">Gebruikersnaam</label>
+                <input value={gebruikersnaam} onChange={(e) => setGebruikersnaam(e.target.value)} className="w-full bg-[#1C1F26] border border-[#2E323C] rounded-lg px-3 py-2.5 text-[#E8E6E1] text-sm outline-none focus:border-[#B5483D]" autoComplete="username" />
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-wider text-[#8A8F9C] mb-1.5">Wachtwoord</label>
+                <input type="password" value={wachtwoord} onChange={(e) => setWachtwoord(e.target.value)} className="w-full bg-[#1C1F26] border border-[#2E323C] rounded-lg px-3 py-2.5 text-[#E8E6E1] text-sm outline-none focus:border-[#B5483D]" autoComplete="current-password" />
+              </div>
+              {error && <div className="text-[#E08A7A] text-xs">{error}</div>}
+              <button type="submit" disabled={bezig} className="w-full bg-[#B5483D] hover:bg-[#9E3E34] disabled:opacity-50 text-[#101216] font-semibold text-sm rounded-lg py-2.5 transition-colors">
+                {bezig ? "Bezig..." : "Inloggen"}
+              </button>
+            </form>
+            <button onClick={onGuest} className="w-full mt-4 text-[#6B7280] hover:text-[#8A8F9C] text-sm">Bekijk rooster als gast</button>
+          </div>
+        </div>
+      );
+    }
+
+    // ---------- Admin: Team ----------
+    function TeamTab({ api, refreshKey, bumpRefresh }) {
+      const [personen, setPersonen] = useState([]);
+      const [nieuweNaam, setNieuweNaam] = useState("");
+      const [laden, setLaden] = useState(true);
+      const { licht } = useThema();
+
+      useEffect(() => {
+        setLaden(true);
+        api.call("/api/personen").then((d) => setPersonen(d.personen)).finally(() => setLaden(false));
+      }, [refreshKey]);
+
+      useEffect(() => {
+        const interval = setInterval(() => {
+          api.call("/api/personen").then((d) => setPersonen(d.personen)).catch(() => {});
+        }, 2 * 60 * 1000);
+        return () => clearInterval(interval);
+      }, [api]);
+
+      async function addPersoon() {
+        const naam = nieuweNaam.trim();
+        if (!naam || personen.length >= MAX_NAMEN) return;
+        setNieuweNaam("");
+        try {
+          const result = await api.call("/api/personen", { method: "POST", body: JSON.stringify({ naam }) });
+          setPersonen((prev) => [...prev, { id: result.id, naam: result.naam, functies: [] }]);
+        } catch (e) {
+          alert(e.message);
+        }
+      }
+
+      async function removePersoon(id) {
+        setPersonen((prev) => prev.filter((p) => p.id !== id));
+        try {
+          await api.call("/api/personen/" + id, { method: "DELETE" });
+        } catch (e) {
+          alert(e.message);
+          bumpRefresh();
+        }
+      }
+
+      async function toggleFunctie(persoon, code) {
+        const heeft = persoon.functies.some((f) => f.code === code);
+        setPersonen((prev) =>
+          prev.map((p) => {
+            if (p.id !== persoon.id) return p;
+            return {
+              ...p,
+              functies: heeft ?
+                p.functies.filter((f) => f.code !== code) :
+                [...p.functies, { code, prioriteit: "vast" }],
+            };
+          })
+        );
+        try {
+          await api.call("/api/personen/" + persoon.id + "/functie", {
+            method: "POST",
+            body: JSON.stringify({ functie_code: code, actief: !heeft, prioriteit: "vast" }),
+          });
+        } catch (e) {
+          alert(e.message);
+          bumpRefresh();
+        }
+      }
+
+      async function togglePrioriteit(persoon, code) {
+        const f = persoon.functies.find((x) => x.code === code);
+        const nieuw = f.prioriteit === "vast" ? "reserve" : "vast";
+        setPersonen((prev) =>
+          prev.map((p) => {
+            if (p.id !== persoon.id) return p;
+            return { ...p, functies: p.functies.map((x) => (x.code === code ? { ...x, prioriteit: nieuw } : x)) };
+          })
+        );
+        try {
+          await api.call("/api/personen/" + persoon.id + "/functie", {
+            method: "POST",
+            body: JSON.stringify({ functie_code: code, actief: true, prioriteit: nieuw }),
+          });
+        } catch (e) {
+          alert(e.message);
+          bumpRefresh();
+        }
+      }
+
+      if (laden) return <div className="text-[#6B7280] text-sm">Laden...</div>;
+
+      return (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[#E8E6E1] font-semibold text-base">Team</h2>
+            <span className="text-[11px] text-[#6B7280] tabular-nums">{personen.length}/{MAX_NAMEN}</span>
+          </div>
+          {personen.length < MAX_NAMEN && (
+            <div className="flex gap-2">
+              <input value={nieuweNaam} onChange={(e) => setNieuweNaam(e.target.value)} onKeyDown={(e) => e.key ===
+                  "Enter" && addPersoon()} placeholder="Naam toevoegen..." className="flex-1 bg-[#1C1F26] border border-[#2E323C] rounded-lg px-3 py-2 text-sm text-[#E8E6E1] outline-none focus:border-[#B5483D]" />
+              <button onClick={addPersoon} className="bg-[#2A2E37] hover:bg-[#343945] text-[#E8E6E1] rounded-lg px-3">+</button>
+            </div>
+          )}
+          {personen.length === 0 ? (
+            <EmptyState title="Nog geen teamleden" body="Voeg namen toe om te beginnen." />
+          ) : (
+            <div className="space-y-2">
               {personen.map((p) => (
-                <tr key={p.id}>
-                  <td style={{ border: "1px solid #999", padding: "3px 4px", fontWeight: "bold", whiteSpace: "nowrap" }}>{p.naam}</td>
-                  {dagenInMaand.map((datum) => {
-                    const dienst = dienstPerDatum[datum];
-                    const code = functieVoor(p.id, dienst);
-                    return (
-                      <td key={datum} style={{ border: "1px solid #999", padding: "2px", textAlign: "center" }}>
-                        {code}
-                      </td>
-                    );
-                  })}
-                </tr>
+                <div key={p.id} className="bg-[#16181D] border border-[#262A33] rounded-xl p-3">
+                  <div className="flex items-center justify-between mb-2.5">
+                    <span className="font-medium text-[#E8E6E1] text-sm">{p.naam}</span>
+                    <button onClick={() => removePersoon(p.id)} className="text-[#5A5F68] hover:text-[#E08A7A] text-xs">verwijder</button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {FUNCTIES.map((f) => {
+                      const actiefF = p.functies.find((x) => x.code === f.code);
+                      const isReserve = actiefF && actiefF.prioriteit === "reserve";
+                      return (
+                        <div key={f.code} className="flex items-stretch rounded-md overflow-hidden border" style={{
+                            borderColor: actiefF ? f.color + "66" : (licht ? "#D4CCC0" : "#2A2E37") }}>
+                          <button onClick={() => toggleFunctie(p, f.code)} className="text-xs font-medium px-2.5 py-1.5" style={actiefF ? { background: f.color +
+                              "22", color: f.color } : { background: licht ? "#ECE7DE" :
+                              "#1A1D23", color: licht ? "#8C8474" : "#5A5F68" }}>
+                            {f.code} · {f.label}
+                          </button>
+                          {actiefF && (
+                            <button onClick={() => togglePrioriteit(p, f.code)} className="text-[10px] font-semibold px-2 py-1.5 border-l" style={isReserve ? { background: licht ?
+                                "#ECE7DE" : "#1A1D23", color: licht ? "#6B6557" :
+                                "#8A8F9C", borderColor: f.color + "40" } : { background: f
+                                .color + "33", color: f.color, borderColor: f.color +
+                                "40" }}>
+                              {isReserve ? "RES" : "VAST"}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
-          <p style={{ fontSize: "8px", color: "#555", marginTop: "6px" }}>
-            B = Bevelvoerder · M = Manschap · CTS = Chauffeur 4133 · CL = Chauffeur 4152 · OL = Opstapper 4152
-          </p>
+            </div>
+          )}
+          {personen.length > 0 && <p className="text-[11px] text-[#5A5F68] px-1">Tik op VAST/RES om te wisselen. Vaste mensen gaan altijd voor reserves.</p>}
         </div>
-      </div>
-    </>
-  );
-}
+      );
+    }
 
-function VerdelingTabel({ personen, diensten }) {
-  const counts = useMemo(() => {
-    const c = {};
-    personen.forEach((p) => { c[p.id] = { total: 0 }; FUNCTIE_ORDER.forEach((f) => (c[p.id][f] = 0)); });
-    diensten.forEach((d) => {
-      if (!d.toewijzing) return;
-      FUNCTIE_ORDER.forEach((code) => {
-        (d.toewijzing[code] || []).forEach((pid) => {
-          if (!c[pid]) return;
-          c[pid][code] += 1;
-          c[pid].total += 1;
-        });
-      });
-    });
-    return c;
-  }, [personen, diensten]);
+    // ---------- Admin: Diensten ----------
+    function DienstenTab({ api, refreshKey, bumpRefresh }) {
+      const [diensten, setDiensten] = useState([]);
+      const [personen, setPersonen] = useState([]);
+      const [laden, setLaden] = useState(true);
+      const [nieuweDatum, setNieuweDatum] = useState(todayISO());
+      const [editId, setEditId] = useState(null);
+      const [periodeMode, setPeriodeMode] = useState(false);
+      const [periodeStart, setPeriodeStart] = useState(todayISO());
+      const [periodeEinde, setPeriodeEinde] = useState(todayISO());
+      const [periodeInterval, setPeriodeInterval] = useState(4);
+      const weerPerDatum = useWeerAlmere();
 
-  return (
-    <div className="space-y-3 pt-2">
-      <h2 className="text-[#E8E6E1] font-semibold text-base">Verdeling</h2>
-      <div className="bg-[#16181D] border border-[#262A33] rounded-xl overflow-x-auto">
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="border-b border-[#1F222A]">
-              <th className="sticky left-0 z-10 bg-[#16181D] text-left px-3 py-2 text-[#6B7280] text-[11px] uppercase tracking-wider font-medium border-r border-[#1F222A]">Naam</th>
-              {FUNCTIE_ORDER.map((code) => <th key={code} className="text-center px-2 py-2 text-[11px] font-medium"><FunctieBadge code={code} small /></th>)}
-              <th className="text-center px-3 py-2 text-[#6B7280] text-[11px] uppercase tracking-wider font-medium">Totaal</th>
-            </tr>
-          </thead>
-          <tbody>
-            {personen.map((p) => (
-              <tr key={p.id} className="border-b border-[#1A1D23] last:border-0">
-                <td className="sticky left-0 z-10 bg-[#16181D] px-3 py-2 text-[#E8E6E1] font-medium whitespace-nowrap border-r border-[#1F222A]">{p.naam}</td>
-                {FUNCTIE_ORDER.map((code) => (
-                  <td key={code} className="text-center px-2 py-2 tabular-nums text-[#A8ABB3]">
-                    {p.functies.some((f) => f.code === code) ? (counts[p.id]?.[code] ?? 0) : <span className="text-[#3A3E47]">—</span>}
-                  </td>
-                ))}
-                <td className="text-center px-3 py-2 tabular-nums font-semibold text-[#E8E6E1]">{counts[p.id]?.total ?? 0}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
+      useEffect(() => {
+        setLaden(true);
+        Promise.all([api.call("/api/diensten"), api.call("/api/personen")])
+          .then(([d, p]) => { setDiensten(d.diensten);
+            setPersonen(p.personen); })
+          .finally(() => setLaden(false));
+      }, [refreshKey]);
 
-// ---------- Admin shell ----------
-function AdminApp({ api, onLogout, onViewGuest }) {
-  const [tab, setTab] = useState("team");
-  const [refreshKey, setRefreshKey] = useState(0);
-  const bumpRefresh = () => setRefreshKey((k) => k + 1);
-  const { licht, wisselThema } = useThema();
+      useEffect(() => {
+        const interval = setInterval(() => {
+          Promise.all([api.call("/api/diensten"), api.call("/api/personen")])
+            .then(([d, p]) => { setDiensten(d.diensten);
+              setPersonen(p.personen); })
+            .catch(() => {});
+        }, 2 * 60 * 1000);
+        return () => clearInterval(interval);
+      }, [api]);
 
-  const tabs = [
-    { key: "team", label: "Team" },
-    { key: "diensten", label: "Diensten" },
-  ];
+      const personMap = useMemo(() => {
+        const m = {};
+        personen.forEach((p) => (m[p.id] = p));
+        return m;
+      }, [personen]);
 
-  return (
-    <div className="min-h-screen bg-[#101216]">
-      <div className="sticky top-0 z-10 bg-[#101216]/95 backdrop-blur border-b border-[#1F222A] px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-md bg-[#B5483D] flex items-center justify-center flex-shrink-0 overflow-hidden">
-            <img src={LOGO_URL} alt="Logo" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = "none"; e.target.parentElement.innerHTML = '<span class="text-[#101216] font-bold text-sm">D</span>'; }} />
+      async function addDienst() {
+        if (!nieuweDatum) return;
+        try {
+          await api.call("/api/diensten", { method: "POST", body: JSON.stringify({ datum: nieuweDatum }) });
+          bumpRefresh();
+        } catch (e) { alert(e.message); }
+      }
+
+      async function addPeriode() {
+        try {
+          await api.call("/api/diensten/periode", { method: "POST", body: JSON.stringify({ van: periodeStart, tot: periodeEinde,
+              interval: Number(periodeInterval) }) });
+          setPeriodeMode(false);
+          bumpRefresh();
+        } catch (e) { alert(e.message); }
+      }
+
+      async function removeDienst(id) {
+        setDiensten((prev) => prev.filter((d) => d.id !== id));
+        try {
+          await api.call("/api/diensten/" + id, { method: "DELETE" });
+        } catch (e) {
+          alert(e.message);
+          bumpRefresh();
+        }
+      }
+
+      async function toggleBeschikbaar(dienstId, persoonId, beschikbaar) {
+        setDiensten((prev) =>
+          prev.map((d) => {
+            if (d.id !== dienstId) return d;
+            const huidige = d.beschikbaar || [];
+            return {
+              ...d,
+              beschikbaar: beschikbaar ? [...huidige, persoonId] : huidige.filter((id) => id !== persoonId),
+            };
+          })
+        );
+        try {
+          await api.call("/api/diensten/" + dienstId + "/beschikbaar", { method: "POST", body: JSON.stringify({ persoon_id: persoonId,
+              beschikbaar }) });
+        } catch (e) {
+          alert(e.message);
+          bumpRefresh();
+        }
+      }
+
+      async function setAlle(dienstId, aan) {
+        setDiensten((prev) =>
+          prev.map((d) => (d.id === dienstId ? { ...d, beschikbaar: aan ? personen.map((p) => p.id) : [] } : d))
+        );
+        try {
+          await api.call("/api/diensten/" + dienstId + "/beschikbaar-alle", { method: "POST", body: JSON.stringify({ aan }) });
+        } catch (e) {
+          alert(e.message);
+          bumpRefresh();
+        }
+      }
+
+      async function indelenEen(dienstId) {
+        try {
+          const result = await api.call("/api/diensten/" + dienstId + "/indelen", { method: "POST" });
+          setDiensten((prev) =>
+            prev.map((d) => (d.id === dienstId ? { ...d, toewijzing: result.toewijzing, tekorten: result.tekorten,
+                handmatigPersonen: [] } : d))
+          );
+        } catch (e) {
+          alert(e.message);
+        }
+      }
+
+      async function indelenAlles() {
+        try {
+          await api.call("/api/diensten/indelen-alles", { method: "POST" });
+          bumpRefresh();
+        } catch (e) { alert(e.message); }
+      }
+
+      async function wijzigToewijzing(dienstId, functieCode, oudePersoonId, nieuwePersoonId) {
+        try {
+          await api.call("/api/diensten/" + dienstId + "/wijzig-toewijzing", {
+            method: "POST",
+            body: JSON.stringify({ functie_code: functieCode, oude_persoon_id: oudePersoonId, nieuwe_persoon_id: nieuwePersoonId }),
+          });
+          bumpRefresh();
+        } catch (e) {
+          alert(e.message);
+        }
+      }
+
+      if (laden) return <div className="text-[#6B7280] text-sm">Laden...</div>;
+
+      return (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[#E8E6E1] font-semibold text-base">Diensten</h2>
+            <div className="flex items-center gap-2">
+              <PrintKnop diensten={diensten} personen={personen} />
+              {diensten.length > 0 && (
+                <button onClick={indelenAlles} disabled={personen.length === 0} className="text-[11px] font-medium text-[#101216] bg-[#C9A24B] hover:bg-[#B8923F] disabled:opacity-30 rounded-lg px-3 py-1.5">Indelen</button>
+              )}
+            </div>
           </div>
-          <div className="text-[#E8E6E1] font-bold text-sm leading-tight">D-Ploeg Veluwsekant</div>
-        </div>
-        <div className="flex items-center gap-3">
-          <ThemaKnop licht={licht} onClick={wisselThema} compact />
-          <button onClick={onViewGuest} className="text-[#8A8F9C] hover:text-[#E8E6E1] text-xs">Gast-weergave</button>
-          <button onClick={onLogout} className="text-[#8A8F9C] hover:text-[#E08A7A] text-xs">Uitloggen</button>
-        </div>
-      </div>
-      <div className="px-4 pt-3 max-w-2xl mx-auto">
-        <div className="flex gap-1 bg-[#16181D] border border-[#262A33] rounded-xl p-1">
-          {tabs.map((t) => (
-            <button key={t.key} onClick={() => setTab(t.key)} className={"flex-1 text-xs font-medium rounded-lg py-2 " + (tab === t.key ? "bg-[#2A2E37] text-[#E8E6E1]" : "text-[#6B7280]")}>
-              {t.label}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="px-4 py-4 max-w-2xl mx-auto">
-        {tab === "team" && <TeamTab api={api} refreshKey={refreshKey} bumpRefresh={bumpRefresh} />}
-        {tab === "diensten" && <DienstenTab api={api} refreshKey={refreshKey} bumpRefresh={bumpRefresh} />}
-      </div>
-    </div>
-  );
-}
 
-// ---------- Root ----------
-function App() {
-  const api = useApi();
-  const [view, setView] = useState(() => (window.location.hash === "#gast" ? "guest" : api.ingelogd ? "admin" : "login"));
+          <div className="flex gap-1 bg-[#16181D] border border-[#262A33] rounded-xl p-1">
+            <button onClick={() => setPeriodeMode(false)} className={"flex-1 text-xs font-medium rounded-lg py-1.5 " + (!
+                periodeMode ? "bg-[#2A2E37] text-[#E8E6E1]" : "text-[#6B7280]")}>Losse datum</button>
+            <button onClick={() => setPeriodeMode(true)} className={"flex-1 text-xs font-medium rounded-lg py-1.5 " + (periodeMode ?
+                "bg-[#2A2E37] text-[#E8E6E1]" : "text-[#6B7280]")}>Periode in 1x</button>
+          </div>
 
-  if (view === "guest") return <GastWeergave onGoToLogin={() => setView("login")} />;
-  if (view === "admin" || api.ingelogd) {
-    return <AdminApp api={api} onLogout={() => { api.logout(); setView("login"); }} onViewGuest={() => setView("guest")} />;
-  }
-  return (
-    <LoginScherm
-      api={api}
-      onLoggedIn={() => setView("admin")}
-      onGuest={() => setView("guest")}
-    />
-  );
-}
+          {!periodeMode ? (
+            <div className="flex gap-2">
+              <input type="date" value={nieuweDatum} onChange={(e) => setNieuweDatum(e.target.value)} className="flex-1 bg-[#1C1F26] border border-[#2E323C] rounded-lg px-3 py-2 text-sm text-[#E8E6E1]" />
+              <button onClick={addDienst} className="bg-[#2A2E37] hover:bg-[#343945] text-[#E8E6E1] rounded-lg px-3">+</button>
+            </div>
+          ) : (
+            <div className="bg-[#16181D] border border-[#262A33] rounded-xl p-3 space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] uppercase tracking-wider text-[#6B7280] mb-1">Van</label>
+                  <input type="date" value={periodeStart} onChange={(e) => setPeriodeStart(e.target.value)} className="w-full bg-[#1C1F26] border border-[#2E323C] rounded-lg px-2.5 py-2 text-sm text-[#E8E6E1]" />
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase tracking-wider text-[#6B7280] mb-1">Tot en met</label>
+                  <input type="date" value={periodeEinde} onChange={(e) => setPeriodeEinde(e.target.value)} className="w-full bg-[#1C1F26] border border-[#2E323C] rounded-lg px-2.5 py-2 text-sm text-[#E8E6E1]" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] uppercase tracking-wider text-[#6B7280] mb-1">Elke hoeveel dagen?</label>
+                <input type="number" min="1" value={periodeInterval} onChange={(e) => setPeriodeInterval(e.target.value)} className="w-20 bg-[#1C1F26] border border-[#2E323C] rounded-lg px-2.5 py-2 text-sm text-[#E8E6E1]" />
+              </div>
+              <button onClick={addPeriode} className="w-full bg-[#C9A24B] hover:bg-[#B8923F] text-[#101216] font-semibold text-sm rounded-lg py-2.5">Diensten aanmaken</button>
+            </div>
+          )}
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
-</script>
+          {personen.length === 0 && <div className="text-[#E0A33D] text-xs bg-[#1F1B12] border border-[#3A3320] rounded-lg px-3 py-2">Voeg eerst teamleden toe.</div>}
+
+          {diensten.length === 0 ? (
+            <EmptyState title="Nog geen diensten" body="Voeg een datum toe, of maak een hele periode in 1x aan." />
+          ) : (
+            <div className="space-y-3">
+              {diensten.map((d) => (
+                <div key={d.id}>
+                  <div className="flex items-center justify-between mb-1.5 px-1">
+                    <button onClick={() => setEditId(editId === d.id ? null : d.id)} className="text-[11px] uppercase tracking-wider text-[#6B7280] hover:text-[#8A8F9C]">
+                      {editId === d.id ? "Klaar met wijzigen" : "Beschikbaar: " + (d.beschikbaar || []).length + "/" +
+                        personen.length}
+                    </button>
+                    <button onClick={() => removeDienst(d.id)} className="text-[#5A5F68] hover:text-[#E08A7A] text-xs">verwijder</button>
+                  </div>
+                  <DienstKaart dienst={d} personMap={personMap} beschikbaarMode={editId === d.id} onToggleBeschikbaar={
+                      toggleBeschikbaar} onSetAlle={setAlle} weerPerDatum={weerPerDatum} onWijzigToewijzing={
+                      wijzigToewijzing} />
+                  {editId !== d.id && (
+                    <div className="flex justify-end mt-1.5">
+                      <button onClick={() => indelenEen(d.id)} disabled={(d.beschikbaar || []).length === 0} className="text-[11px] font-medium text-[#C9A24B] hover:text-[#DDB35E] disabled:opacity-30">Opnieuw indelen</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {personen.length > 0 && diensten.length > 0 && <VerdelingTabel personen={personen} diensten={diensten} />}
+        </div>
+      );
+    }
+
+    // ---------- Print: maandoverzicht (liggend, namen × datums, functiecode per cel) ----------
+    function maandLabel(jaarMaand) {
+      const [jaar, maand] = jaarMaand.split("-").map(Number);
+      const d = new Date(jaar, maand - 1, 1);
+      return d.toLocaleDateString("nl-NL", { month: "long", year: "numeric" });
+    }
+
+    function beschikbareMaanden(diensten) {
+      const set = new Set();
+      diensten.forEach((d) => set.add(d.datum.slice(0, 7))); // "YYYY-MM"
+      return [...set].sort();
+    }
+
+    function PrintKnop({ diensten, personen }) {
+      const [open, setOpen] = useState(false);
+      const [versturen, setVersturen] = useState(false);
+      const [definitief, setDefinitief] = useState({});
+      const maanden = useMemo(() => beschikbareMaanden(diensten), [diensten]);
+      const [gekozenMaand, setGekozenMaand] = useState(() => maanden[maanden.length - 1] || "");
+
+      useEffect(() => {
+        if (!gekozenMaand && maanden.length > 0) setGekozenMaand(maanden[maanden.length - 1]);
+      }, [maanden]);
+
+      // Laad definitief status uit localStorage
+      useEffect(() => {
+        try {
+          const saved = localStorage.getItem('definitief_maanden');
+          if (saved) setDefinitief(JSON.parse(saved));
+        } catch (e) {}
+      }, []);
+
+      const toggleDefinitief = (maand) => {
+        const updated = { ...definitief, [maand]: !definitief[maand] };
+        setDefinitief(updated);
+        localStorage.setItem('definitief_maanden', JSON.stringify(updated));
+      };
+
+      const dagenInMaand = useMemo(() => {
+        if (!gekozenMaand) return [];
+        const [jaar, maand] = gekozenMaand.split("-").map(Number);
+        const aantalDagen = new Date(jaar, maand, 0).getDate();
+        const datums = [];
+        for (let dag = 1; dag <= aantalDagen; dag++) {
+          datums.push(gekozenMaand + "-" + String(dag).padStart(2, "0"));
+        }
+        return datums;
+      }, [gekozenMaand]);
+
+      const dienstPerDatum = useMemo(() => {
+        const m = {};
+        diensten.forEach((d) => (m[d.datum] = d));
+        return m;
+      }, [diensten]);
+
+      function functieVoor(persoonId, dienst) {
+        if (!dienst || !dienst.toewijzing) return "";
+        for (const code of FUNCTIE_ORDER) {
+          if ((dienst.toewijzing[code] || []).includes(persoonId)) return code;
+        }
+        return "";
+      }
+
+      const verstuurMail = () => {
+        // Genereer PDF content (zelfde als print)
+        const printContent = document.getElementById('print-content');
+        const htmlContent = printContent ? printContent.innerHTML : '';
+
+        // Maak mailto link met bijlage (PDF gegenereerd via print)
+        const mailtoLink = `mailto:?subject=Maandrooster ${gekozenMaand ? maandLabel(gekozenMaand) : ''}&body=Beste planners.%0D%0A%0D%0AHierbij het aangepaste maandrooster.%0D%0AGraag 1 op 1 overnemen in InPlanning.%0D%0A%0D%0AVerder geen platte teksten met overzicht in de mail plakken.`;
+        window.location.href = mailtoLink;
+        setVersturen(false);
+        setOpen(false);
+      };
+
+      if (maanden.length === 0) return null;
+
+      return (
+        <>
+          <button
+            onClick={() => setOpen(true)}
+            className="text-[11px] font-medium text-[#8A8F9C] hover:text-[#E8E6E1] border border-[#2A2E37] rounded-lg px-3 py-1.5 flex-shrink-0"
+          >
+            🖨️ Printen
+          </button>
+
+          {open && (
+            <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() =>
+                setOpen(false)}>
+              <div
+                className="bg-[#16181D] border border-[#2A2E37] rounded-xl p-5 max-w-md w-full"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="text-[#E8E6E1] font-semibold text-base mb-3">Maandrooster</div>
+                <label className="block text-[11px] uppercase tracking-wider text-[#6B7280] mb-1.5">Maand</label>
+                <select
+                  value={gekozenMaand}
+                  onChange={(e) => setGekozenMaand(e.target.value)}
+                  className="w-full bg-[#1C1F26] border border-[#2E323C] rounded-lg px-3 py-2 text-sm text-[#E8E6E1] outline-none focus:border-[#B5483D] mb-4 capitalize"
+                >
+                  {maanden.map((m) => (
+                    <option key={m} value={m} className="capitalize">{maandLabel(m)}</option>
+                  ))}
+                </select>
+
+                {gekozenMaand && (
+                  <div className="mb-4 flex items-center gap-3">
+                    <label className="flex items-center gap-2 text-sm text-[#E8E6E1] cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={!!definitief[gekozenMaand]}
+                        onChange={() => toggleDefinitief(gekozenMaand)}
+                        className="w-4 h-4 accent-[#C9A24B]"
+                      />
+                      Definitief (gemaild)
+                    </label>
+                    {definitief[gekozenMaand] && (
+                      <span className="text-xs text-[#7FAE8C]">✓ Gemaild</span>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <button onClick={() => setOpen(false)} className="flex-1 text-sm text-[#8A8F9C] hover:text-[#E8E6E1] border border-[#2A2E37] rounded-lg py-2">
+                      Annuleren
+                    </button>
+                    <button onClick={() => { window.print();
+                      setOpen(false); }} className="flex-1 text-sm font-semibold text-[#101216] bg-[#C9A24B] hover:bg-[#B8923F] rounded-lg py-2">
+                      Printen
+                    </button>
+                  </div>
+                  <button
+                    onClick={verstuurMail}
+                    className="w-full text-sm font-semibold text-[#101216] bg-[#3D6B9C] hover:bg-[#345A82] rounded-lg py-2"
+                  >
+                    📧 Verstuur per mail
+                  </button>
+                </div>
+                <p className="text-[10px] text-[#5A5F68] mt-3">
+                  Kies in het printvenster de liggende stand (landscape) voor het beste resultaat.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Print-content */}
+          <div id="print-root" className="print-only">
+            <div id="print-content" style={{ padding: "0", fontFamily: "Arial, sans-serif", color: "#000" }}>
+              <h1 style={{ fontSize: "16px", marginBottom: "2px", textTransform: "capitalize" }}>
+                D-Ploeg Veluwsekant — Maandrooster {gekozenMaand ? maandLabel(gekozenMaand) : ""}
+                {definitief[gekozenMaand] && " ✓"}
+              </h1>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9px" }}>
+                <thead>
+                  <tr>
+                    <th style={{ border: "1px solid #999", padding: "3px 4px", textAlign: "left", background: "#eee" }}>
+                      Naam</th>
+                    {dagenInMaand.map((datum) => (
+                      <th key={datum} style={{ border: "1px solid #999", padding: "2px", background: "#eee",
+                          minWidth: "20px" }}>
+                        {Number(datum.slice(8, 10))}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {personen.map((p) => (
+                    <tr key={p.id}>
+                      <td style={{ border: "1px solid #999", padding: "3px 4px", fontWeight: "bold",
+                          whiteSpace: "nowrap" }}>{p.naam}</td>
+                      {dagenInMaand.map((datum) => {
+                        const dienst = dienstPerDatum[datum];
+                        const code = functieVoor(p.id, dienst);
+                        return (
+                          <td key={datum} style={{ border: "1px solid #999", padding: "2px", textAlign: "center" }}>
+                            {code}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p style={{ fontSize: "8px", color: "#555", marginTop: "6px" }}>
+                B = Bevelvoerder · M = Manschap · CTS = Chauffeur 4133 · CL = Chauffeur 4152 · OL = Opstapper 4152
+              </p>
+            </div>
+          </div>
+        </>
+      );
+    }
+
+    function VerdelingTabel({ personen, diensten }) {
+      const counts = useMemo(() => {
+        const c = {};
+        personen.forEach((p) => { c[p.id] = { total: 0 };
+          FUNCTIE_ORDER.forEach((f) => (c[p.id][f] = 0)); });
+        diensten.forEach((d) => {
+          if (!d.toewijzing) return;
+          FUNCTIE_ORDER.forEach((code) => {
+            (d.toewijzing[code] || []).forEach((pid) => {
+              if (!c[pid]) return;
+              c[pid][code] += 1;
+              c[pid].total += 1;
+            });
+          });
+        });
+        return c;
+      }, [personen, diensten]);
+
+      return (
+        <div className="space-y-3 pt-2">
+          <h2 className="text-[#E8E6E1] font-semibold text-base">Verdeling</h2>
+          <div className="bg-[#16181D] border border-[#262A33] rounded-xl overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-[#1F222A]">
+                  <th className="sticky left-0 z-10 bg-[#16181D] text-left px-3 py-2 text-[#6B7280] text-[11px] uppercase tracking-wider font-medium border-r border-[#1F222A]">Naam</th>
+                  {FUNCTIE_ORDER.map((code) => <th key={code} className="text-center px-2 py-2 text-[11px] font-medium"><
+                      FunctieBadge code={code} small /></th>)}
+                  <th className="text-center px-3 py-2 text-[#6B7280] text-[11px] uppercase tracking-wider font-medium">Totaal</th>
+                </tr>
+              </thead>
+              <tbody>
+                {personen.map((p) => (
+                  <tr key={p.id} className="border-b border-[#1A1D23] last:border-0">
+                    <td className="sticky left-0 z-10 bg-[#16181D] px-3 py-2 text-[#E8E6E1] font-medium whitespace-nowrap border-r border-[#1F222A]">{p.naam}</td>
+                    {FUNCTIE_ORDER.map((code) => (
+                      <td key={code} className="text-center px-2 py-2 tabular-nums text-[#A8ABB3]">
+                        {p.functies.some((f) => f.code === code) ? (counts[p.id]?.[code] ?? 0) : <span className="text-[#3A3E47]">—</span>}
+                      </td>
+                    ))}
+                    <td className="text-center px-3 py-2 tabular-nums font-semibold text-[#E8E6E1]">{counts[p.id]?.total ??
+                      0}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    // ---------- Admin shell ----------
+    function AdminApp({ api, onLogout, onViewGuest }) {
+      const [tab, setTab] = useState("team");
+      const [refreshKey, setRefreshKey] = useState(0);
+      const bumpRefresh = () => setRefreshKey((k) => k + 1);
+      const { licht, wisselThema } = useThema();
+
+      const tabs = [
+        { key: "team", label: "Team" },
+        { key: "diensten", label: "Diensten" },
+      ];
+
+      return (
+        <div className="min-h-screen bg-[#101216]">
+          <div className="sticky top-0 z-10 bg-[#101216]/95 backdrop-blur border-b border-[#1F222A] px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-md bg-[#B5483D] flex items-center justify-center flex-shrink-0 overflow-hidden">
+                <img src={LOGO_URL} alt="Logo" className="w-full h-full object-cover" onError={(e) => { e.target
+                    .style.display = "none";
+                  e.target.parentElement.innerHTML =
+                    '<span class="text-[#101216] font-bold text-sm">D</span>'; }} />
+              </div>
+              <div className="text-[#E8E6E1] font-bold text-sm leading-tight">D-Ploeg Veluwsekant</div>
+            </div>
+            <div className="flex items-center gap-3">
+              <ThemaKnop licht={licht} onClick={wisselThema} compact />
+              <button onClick={onViewGuest} className="text-[#8A8F9C] hover:text-[#E8E6E1] text-xs">Gast-weergave</button>
+              <button onClick={onLogout} className="text-[#8A8F9C] hover:text-[#E08A7A] text-xs">Uitloggen</button>
+            </div>
+          </div>
+          <div className="px-4 pt-3 max-w-2xl mx-auto">
+            <div className="flex gap-1 bg-[#16181D] border border-[#262A33] rounded-xl p-1">
+              {tabs.map((t) => (
+                <button key={t.key} onClick={() => setTab(t.key)} className={"flex-1 text-xs font-medium rounded-lg py-2 " + (tab ===
+                    t.key ? "bg-[#2A2E37] text-[#E8E6E1]" : "text-[#6B7280]")}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="px-4 py-4 max-w-2xl mx-auto">
+            {tab === "team" && <TeamTab api={api} refreshKey={refreshKey} bumpRefresh={bumpRefresh} />}
+            {tab === "diensten" && <DienstenTab api={api} refreshKey={refreshKey} bumpRefresh={bumpRefresh} />}
+          </div>
+        </div>
+      );
+    }
+
+    // ---------- Root ----------
+    function App() {
+      const api = useApi();
+      const [view, setView] = useState(() => (window.location.hash === "#gast" ? "guest" : api.ingelogd ? "admin" :
+        "login"));
+
+      if (view === "guest") return <GastWeergave onGoToLogin={() => setView("login")} />;
+      if (view === "admin" || api.ingelogd) {
+        return <AdminApp api={api} onLogout={() => { api.logout();
+          setView("login"); }} onViewGuest={() => setView("guest")} />;
+      }
+      return (
+        <LoginScherm
+          api={api}
+          onLoggedIn={() => setView("admin")}
+          onGuest={() => setView("guest")}
+        />
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
 </body>
 </html>

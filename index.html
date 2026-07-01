@@ -1387,13 +1387,24 @@
       }
 
       const verstuurMail = () => {
-        // Genereer PDF content (zelfde als print)
+        // Genereer de PDF-inhoud als HTML-string
         const printContent = document.getElementById('print-content');
-        const htmlContent = printContent ? printContent.innerHTML : '';
+        if (!printContent) return;
 
-        // Maak mailto link met bijlage (PDF gegenereerd via print)
-        const mailtoLink = `mailto:?subject=Maandrooster ${gekozenMaand ? maandLabel(gekozenMaand) : ''}&body=Beste planners.%0D%0A%0D%0AHierbij het aangepaste maandrooster.%0D%0AGraag 1 op 1 overnemen in InPlanning.%0D%0A%0D%0AVerder geen platte teksten met overzicht in de mail plakken.`;
-        window.location.href = mailtoLink;
+        // Bouw de mailto-link met de PDF als bijlage (gebruik data URI)
+        const htmlContent = printContent.outerHTML;
+        const pdfBlob = new Blob([htmlContent], { type: 'application/pdf' });
+        const reader = new FileReader();
+        reader.onload = function() {
+          const base64 = reader.result.split(',')[1];
+          const pdfDataUri = `data:application/pdf;base64,${base64}`;
+
+          const mailtoLink =
+            `mailto:?subject=Maandrooster ${gekozenMaand ? maandLabel(gekozenMaand) : ''}&body=Beste planners.%0D%0A%0D%0AHierbij het aangepaste maandrooster.%0D%0AGraag 1 op 1 overnemen in InPlanning.&attach=${encodeURIComponent(pdfDataUri)}`;
+          window.location.href = mailtoLink;
+        };
+        reader.readAsDataURL(pdfBlob);
+
         setVersturen(false);
         setOpen(false);
       };
@@ -1406,7 +1417,7 @@
             onClick={() => setOpen(true)}
             className="text-[11px] font-medium text-[#8A8F9C] hover:text-[#E8E6E1] border border-[#2A2E37] rounded-lg px-3 py-1.5 flex-shrink-0"
           >
-            🖨️ Printen
+            🖨️ Printen/Mail
           </button>
 
           {open && (

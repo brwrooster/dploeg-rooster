@@ -12,8 +12,6 @@
 </script>
 <script src="https://cdn.tailwindcss.com">
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer">
-</script>
 
 <style>
   body {
@@ -332,11 +330,6 @@
     .print-only {
       display: block;
     }
-  }
-  
-  /* PDF generation helper */
-  .pdf-generate {
-    display: none;
   }
 </style>
 <script>
@@ -1345,7 +1338,6 @@
 
     function PrintKnop({ diensten, personen }) {
       const [open, setOpen] = useState(false);
-      const [bezig, setBezig] = useState(false);
       const [definitief, setDefinitief] = useState({});
       const maanden = useMemo(() => beschikbareMaanden(diensten), [diensten]);
       const [gekozenMaand, setGekozenMaand] = useState(() => maanden[maanden.length - 1] || "");
@@ -1354,7 +1346,6 @@
         if (!gekozenMaand && maanden.length > 0) setGekozenMaand(maanden[maanden.length - 1]);
       }, [maanden]);
 
-      // Laad definitief status uit localStorage
       useEffect(() => {
         try {
           const saved = localStorage.getItem('definitief_maanden');
@@ -1393,62 +1384,76 @@
         return "";
       }
 
-      const verstuurMail = async () => {
-        setBezig(true);
-        try {
-          // Genereer PDF met html2pdf
-          const element = document.getElementById('print-content');
-          if (!element) {
-            setBezig(false);
-            return;
-          }
+      // Genereer platte tekst tabel voor in de e-mail
+      const genereerTekstTabel = () => {
+        if (!gekozenMaand || personen.length === 0) return '';
 
-          const opt = {
-            margin: 10,
-            filename: `maandrooster_${gekozenMaand}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
-          };
+        const maandNaam = maandLabel(gekozenMaand);
+        let tekst = `D-Ploeg Veluwsekant — Maandrooster ${maandNaam}\n`;
+        tekst += `${'='.repeat(60)}\n\n`;
 
-          // Genereer PDF als blob
-          const pdfBlob = await html2pdf().set(opt).from(element).outputPdf('blob');
-          
-          // Converteer blob naar base64
-          const reader = new FileReader();
-          reader.onload = function() {
-            const base64 = reader.result.split(',')[1];
-            
-            // Bouw mailto link met PDF als bijlage
-            const subject = encodeURIComponent(`Maandrooster ${gekozenMaand ? maandLabel(gekozenMaand) : ''}`);
-            const body = encodeURIComponent(
-              'Beste planners.\n\n' +
-              'Hierbij het aangepaste maandrooster.\n' +
-              'Graag 1 op 1 overnemen in InPlanning.'
-            );
-            
-            // Voeg PDF bijlage toe met data URI
-            const mailtoLink = `mailto:?subject=${subject}&body=${body}`;
-            
-            // Open mail app
-            window.location.href = mailtoLink;
-            
-            // Download PDF als backup (optioneel)
-            // const link = document.createElement('a');
-            // link.href = `data:application/pdf;base64,${base64}`;
-            // link.download = `maandrooster_${gekozenMaand}.pdf`;
-            // link.click();
-            
-            setOpen(false);
-            setBezig(false);
-          };
-          reader.readAsDataURL(pdfBlob);
-          
-        } catch (error) {
-          console.error('PDF generatie fout:', error);
-          alert('Er is een fout opgetreden bij het genereren van de PDF. Probeer het opnieuw.');
-          setBezig(false);
+        // Header met datums
+        let header = 'Naam'.padEnd(20);
+        dagenInMaand.forEach((datum) => {
+          const dag = String(Number(datum.slice(8, 10))).padStart(2, ' ');
+          header += dag + ' ';
+        });
+        tekst += header + '\n';
+        tekst += '-'.repeat(header.length) + '\n';
+
+        // Rijen met personen
+        personen.forEach((p) => {
+          let rij = p.naam.padEnd(20);
+          dagenInMaand.forEach((datum) => {
+            const dienst = dienstPerDatum[datum];
+            const code = functieVoor(p.id, dienst);
+            rij += (code || '·').padStart(2, ' ') + ' ';
+          });
+          tekst += rij + '\n';
+        });
+
+        // Legenda
+        tekst += '\n' + '-'.repeat(60) + '\n';
+        tekst +=
+          'Legenda: B = Bevelvoerder · M = Manschap · CTS = Chauffeur 4133 · CL = Chauffeur 4152 · OL = Opstapper 4152\n';
+        tekst += `\nDit overzicht is gegenereerd op ${new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+
+        return tekst;
+      };
+
+      const verstuurMail = () => {
+        const maandNaam = gekozenMaand ? maandLabel(gekozenMaand) : '';
+        const onderwerp = `Maandrooster ${maandNaam}`;
+
+        // Genereer de teksttabel
+        const tabelTekst = genereerTekstTabel();
+
+        // Bouw de mailtekst
+        const mailTekst =
+          'Beste planners,\n\n' +
+          'Hierbij het aangepaste maandrooster.\n' +
+          'Graag 1 op 1 overnemen in InPlanning.\n\n' +
+          '='.repeat(60) + '\n\n' +
+          tabelTekst + '\n\n' +
+          '='.repeat(60) + '\n\n' +
+          'Met vriendelijke groet,\n' +
+          'D-Ploeg Veluwsekant';
+
+        // URL encode de tekst
+        const subject = encodeURIComponent(onderwerp);
+        const body = encodeURIComponent(mailTekst);
+
+        // Open mail app
+        window.location.href = `mailto:?subject=${subject}&body=${body}`;
+
+        // Markeer als definitief
+        if (gekozenMaand) {
+          const updated = { ...definitief, [gekozenMaand]: true };
+          setDefinitief(updated);
+          localStorage.setItem('definitief_maanden', JSON.stringify(updated));
         }
+
+        setOpen(false);
       };
 
       if (maanden.length === 0) return null;
@@ -1486,6 +1491,7 @@
                     <label className="flex items-center gap-2 text-sm text-[#E8E6E1] cursor-pointer">
                       <input
                         type="checkbox"
+                        id="definitief-checkbox"
                         checked={!!definitief[gekozenMaand]}
                         onChange={() => toggleDefinitief(gekozenMaand)}
                         className="w-4 h-4 accent-[#C9A24B]"
@@ -1510,34 +1516,36 @@
                   </div>
                   <button
                     onClick={verstuurMail}
-                    disabled={bezig}
-                    className="w-full text-sm font-semibold text-[#101216] bg-[#3D6B9C] hover:bg-[#345A82] disabled:opacity-50 rounded-lg py-2"
+                    className="w-full text-sm font-semibold text-[#101216] bg-[#3D6B9C] hover:bg-[#345A82] rounded-lg py-2"
                   >
-                    {bezig ? 'PDF genereren...' : '📧 Verstuur per mail'}
+                    📧 Verstuur per mail
                   </button>
                 </div>
                 <p className="text-[10px] text-[#5A5F68] mt-3">
-                  Kies in het printvenster de liggende stand (landscape) voor het beste resultaat.
+                  Bij 'Verstuur per mail' wordt de tabel als platte tekst in de e-mail gezet.
+                </p>
+                <p className="text-[10px] text-[#5A5F68]">
+                  Kies bij 'Printen' de liggende stand (landscape) voor het beste resultaat.
                 </p>
               </div>
             </div>
           )}
 
-          {/* Print-content - ook gebruikt voor PDF generatie */}
+          {/* Print-content */}
           <div id="print-root" className="print-only">
-            <div id="print-content" style={{ padding: "20px", fontFamily: "Arial, sans-serif", color: "#000", background: "#fff" }}>
-              <h1 style={{ fontSize: "18px", marginBottom: "4px", textTransform: "capitalize" }}>
+            <div id="print-content" style={{ padding: "0", fontFamily: "Arial, sans-serif", color: "#000" }}>
+              <h1 style={{ fontSize: "16px", marginBottom: "2px", textTransform: "capitalize" }}>
                 D-Ploeg Veluwsekant — Maandrooster {gekozenMaand ? maandLabel(gekozenMaand) : ""}
                 {definitief[gekozenMaand] && " ✓"}
               </h1>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9px" }}>
                 <thead>
                   <tr>
-                    <th style={{ border: "1px solid #999", padding: "4px 6px", textAlign: "left", background: "#eee" }}>
+                    <th style={{ border: "1px solid #999", padding: "3px 4px", textAlign: "left", background: "#eee" }}>
                       Naam</th>
                     {dagenInMaand.map((datum) => (
-                      <th key={datum} style={{ border: "1px solid #999", padding: "3px", background: "#eee",
-                          minWidth: "22px", textAlign: "center" }}>
+                      <th key={datum} style={{ border: "1px solid #999", padding: "2px", background: "#eee",
+                          minWidth: "20px" }}>
                         {Number(datum.slice(8, 10))}
                       </th>
                     ))}
@@ -1546,13 +1554,13 @@
                 <tbody>
                   {personen.map((p) => (
                     <tr key={p.id}>
-                      <td style={{ border: "1px solid #999", padding: "4px 6px", fontWeight: "bold",
+                      <td style={{ border: "1px solid #999", padding: "3px 4px", fontWeight: "bold",
                           whiteSpace: "nowrap" }}>{p.naam}</td>
                       {dagenInMaand.map((datum) => {
                         const dienst = dienstPerDatum[datum];
                         const code = functieVoor(p.id, dienst);
                         return (
-                          <td key={datum} style={{ border: "1px solid #999", padding: "3px", textAlign: "center" }}>
+                          <td key={datum} style={{ border: "1px solid #999", padding: "2px", textAlign: "center" }}>
                             {code}
                           </td>
                         );
@@ -1561,7 +1569,7 @@
                   ))}
                 </tbody>
               </table>
-              <p style={{ fontSize: "9px", color: "#555", marginTop: "8px" }}>
+              <p style={{ fontSize: "8px", color: "#555", marginTop: "6px" }}>
                 B = Bevelvoerder · M = Manschap · CTS = Chauffeur 4133 · CL = Chauffeur 4152 · OL = Opstapper 4152
               </p>
             </div>

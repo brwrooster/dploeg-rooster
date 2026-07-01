@@ -304,7 +304,7 @@
     }
   }
 
-  /* PDF generatie styles */
+  /* PDF generatie styles - deze worden toegepast op het element dat in de PDF wordt gezet */
   #pdf-content {
     background: #fff;
     padding: 20px;
@@ -1348,7 +1348,7 @@
       );
     }
 
-    // ---------- PDF Knop ----------
+    // ---------- PDF Knop (met fix voor lege PDF) ----------
     function maandLabel(jaarMaand) {
       const [jaar, maand] = jaarMaand.split("-").map(Number);
       const d = new Date(jaar, maand - 1, 1);
@@ -1413,37 +1413,8 @@
       const genereerPDF = async () => {
         setBezig(true);
         try {
-          const element = document.getElementById('pdf-content');
-          if (!element) {
-            setBezig(false);
-            return;
-          }
-
           const maandNaam = gekozenMaand ? maandLabel(gekozenMaand) : '';
           const isDefinitief = definitief[gekozenMaand] || false;
-
-          // Bouw de PDF inhoud
-          let html = `
-            <div style="padding: 20px; font-family: Arial, sans-serif; color: #000;">
-              <h1 style="font-size: 18px; margin-bottom: 4px; text-align: center;">D-Ploeg Veluwsekant</h1>
-              <h2 style="font-size: 14px; margin-bottom: 10px; text-align: center; color: #333;">Maandrooster ${maandNaam}${isDefinitief ? ' ✓' : ''}</h2>
-              <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
-                <thead>
-                  <tr>
-                    <th style="border: 1px solid #333; padding: 6px 8px; text-align: left; background: #e8e8e8; font-weight: bold;">Naam</th>
-          `;
-
-          dagenInMaand.forEach((datum) => {
-            const dag = Number(datum.slice(8, 10));
-            html += `<th style="border: 1px solid #333; padding: 4px 6px; text-align: center; background: #e8e8e8; font-weight: bold; min-width: 22px;">${dag}</th>`;
-          });
-
-          html += `
-                  </tr>
-                </thead>
-                <tbody>
-          `;
-
           const kleuren = {
             'B': '#C9A24B',
             'M': '#5B8C8C',
@@ -1452,38 +1423,66 @@
             'OL': '#7A6B9C'
           };
 
+          // Bouw de PDF inhoud direct in een tijdelijk element
+          const container = document.createElement('div');
+          container.style.cssText = 'padding:20px;font-family:Arial,sans-serif;color:#000;background:#fff;';
+          
+          let html = `
+            <h1 style="font-size:18px;margin-bottom:4px;text-align:center;">D-Ploeg Veluwsekant</h1>
+            <h2 style="font-size:14px;margin-bottom:10px;text-align:center;color:#333;">Maandrooster ${maandNaam}${isDefinitief ? ' ✓' : ''}</h2>
+            <table style="width:100%;border-collapse:collapse;font-size:10px;">
+              <thead>
+                <tr>
+                  <th style="border:1px solid #333;padding:6px 8px;text-align:left;background:#e8e8e8;font-weight:bold;">Naam</th>
+          `;
+
+          dagenInMaand.forEach((datum) => {
+            const dag = Number(datum.slice(8, 10));
+            html += `<th style="border:1px solid #333;padding:4px 6px;text-align:center;background:#e8e8e8;font-weight:bold;min-width:22px;">${dag}</th>`;
+          });
+
+          html += `
+                </tr>
+              </thead>
+              <tbody>
+          `;
+
           personen.forEach((p) => {
-            html += `<tr><td style="border: 1px solid #333; padding: 4px 8px; font-weight: bold; background: #f5f5f5; text-align: left;">${p.naam}</td>`;
+            html += `<tr><td style="border:1px solid #333;padding:4px 8px;font-weight:bold;background:#f5f5f5;text-align:left;">${p.naam}</td>`;
             dagenInMaand.forEach((datum) => {
               const dienst = dienstPerDatum[datum];
               const code = functieVoor(p.id, dienst);
               const kleur = code ? kleuren[code] || '#888' : '#ddd';
               const tekst = code || '·';
-              html += `<td style="border: 1px solid #333; padding: 3px 6px; text-align: center; font-weight: bold; color: ${kleur}; background: ${kleur}22;">${tekst}</td>`;
+              html += `<td style="border:1px solid #333;padding:3px 6px;text-align:center;font-weight:bold;color:${kleur};background:${kleur}22;">${tekst}</td>`;
             });
             html += `</tr>`;
           });
 
           html += `
-                </tbody>
-              </table>
-              <div style="margin-top: 10px; font-size: 9px; color: #555; border-top: 1px solid #ccc; padding-top: 6px; text-align: center;">
-                <strong>Legenda:</strong> 
-                <span style="color: #C9A24B; font-weight: bold;">B</span> = Bevelvoerder · 
-                <span style="color: #5B8C8C; font-weight: bold;">M</span> = Manschap · 
-                <span style="color: #B5483D; font-weight: bold;">CTS</span> = Chauffeur 4133 · 
-                <span style="color: #3D6B9C; font-weight: bold;">CL</span> = Chauffeur 4152 · 
-                <span style="color: #7A6B9C; font-weight: bold;">OL</span> = Opstapper 4152
-                <span style="margin-left: 10px; color: #999;">· = geen dienst</span>
-              </div>
-              <div style="margin-top: 4px; font-size: 8px; color: #999; text-align: right;">
-                Gegenereerd op ${new Date().toLocaleString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-              </div>
+              </tbody>
+            </table>
+            <div style="margin-top:10px;font-size:9px;color:#555;border-top:1px solid #ccc;padding-top:6px;text-align:center;">
+              <strong>Legenda:</strong> 
+              <span style="color:#C9A24B;font-weight:bold;">B</span> = Bevelvoerder · 
+              <span style="color:#5B8C8C;font-weight:bold;">M</span> = Manschap · 
+              <span style="color:#B5483D;font-weight:bold;">CTS</span> = Chauffeur 4133 · 
+              <span style="color:#3D6B9C;font-weight:bold;">CL</span> = Chauffeur 4152 · 
+              <span style="color:#7A6B9C;font-weight:bold;">OL</span> = Opstapper 4152
+              <span style="margin-left:10px;color:#999;">· = geen dienst</span>
+            </div>
+            <div style="margin-top:4px;font-size:8px;color:#999;text-align:right;">
+              Gegenereerd op ${new Date().toLocaleString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
             </div>
           `;
 
-          // Zet de HTML in het verborgen element
-          element.innerHTML = html;
+          container.innerHTML = html;
+
+          // Voeg tijdelijk toe aan de DOM
+          const tempDiv = document.createElement('div');
+          tempDiv.style.cssText = 'position:absolute;left:-9999px;top:0;width:800px;';
+          tempDiv.appendChild(container);
+          document.body.appendChild(tempDiv);
 
           // Genereer PDF
           const opt = {
@@ -1494,7 +1493,10 @@
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
           };
 
-          await html2pdf().set(opt).from(element).save();
+          await html2pdf().set(opt).from(container).save();
+
+          // Verwijder tijdelijk element
+          document.body.removeChild(tempDiv);
 
           // Markeer als definitief als checkbox is aangevinkt
           if (gekozenMaand && document.getElementById('definitief-checkbox')?.checked) {
@@ -1641,9 +1643,6 @@
               </div>
             </div>
           )}
-
-          {/* Verborgen element voor PDF generatie */}
-          <div id="pdf-content" style={{ display: 'none' }}></div>
         </>
       );
     }

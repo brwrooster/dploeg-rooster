@@ -302,25 +302,67 @@
     }
   }
 
-  /* ===== Print ===== */
+  /* ===== Print - Verbeterd ===== */
   @media print {
     @page {
       size: landscape;
-      margin: 10mm;
+      margin: 8mm;
     }
+
+    /* Reset alle zichtbaarheid */
     body * {
-      visibility: hidden;
+      visibility: hidden !important;
     }
+
+    /* Alleen print-root zichtbaar */
     #print-root,
     #print-root * {
-      visibility: visible;
+      visibility: visible !important;
     }
+
     #print-root {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      max-height: 100vh !important;
       background: #fff !important;
+      padding: 15px !important;
+      box-sizing: border-box !important;
+      overflow: hidden !important;
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: flex-start !important;
+      page-break-after: avoid !important;
+      page-break-inside: avoid !important;
+    }
+
+    #print-content {
+      flex: 1;
+      overflow: hidden !important;
+      max-height: calc(100vh - 80px);
+    }
+
+    #print-content table {
+      width: 100% !important;
+      font-size: 8px !important;
+      border-collapse: collapse !important;
+    }
+
+    #print-content h1 {
+      font-size: 14px !important;
+      margin-bottom: 4px !important;
+    }
+
+    /* Verberg root */
+    #root,
+    #root * {
+      display: none !important;
+    }
+
+    .print-only {
+      display: block !important;
     }
   }
   .print-only {
@@ -328,7 +370,7 @@
   }
   @media print {
     .print-only {
-      display: block;
+      display: block !important;
     }
   }
 </style>
@@ -351,7 +393,7 @@
   <div id="root"></div>
 
   <script type="text/babel" data-presets="react">
-    const { useState, useEffect, useMemo, useCallback } = React;
+    const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
     // Beheert het thema
     const THEMA_OPSLAG_KEY = "rooster_thema";
@@ -921,16 +963,6 @@
       const [error, setError] = useState("");
       const [bezig, setBezig] = useState(false);
       const { licht, wisselThema } = useThema();
-      const [lastUpdated] = useState(() => {
-        const d = new Date();
-        return d.toLocaleString('nl-NL', { 
-          day: 'numeric', 
-          month: 'long', 
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        });
-      });
 
       async function handleSubmit(e) {
         e.preventDefault();
@@ -978,16 +1010,14 @@
             </form>
             <button onClick={onGuest} className="w-full mt-4 text-[#6B7280] hover:text-[#8A8F9C] text-sm">Bekijk rooster als gast</button>
           </div>
-          
-          {/* Footer - bijgewerkt met nieuw e-mailadres */}
+
+          {/* Footer - zonder update tijd */}
           <div className="w-full max-w-sm mt-8 pt-4 border-t border-[#2A2E37] text-center">
             <p className="text-[10px] text-[#5A5F68] leading-relaxed">
               © 2026 R-Tech | Web Development by Bos. All rights reserved.<br />
               <a href="mailto:richardbos@icloud.com" className="text-[#6B7280] hover:text-[#8A8F9C] transition-colors">
                 richardbos@icloud.com
               </a>
-              <br />
-              <span className="text-[#4A4F58]">Laatste update: {lastUpdated}</span>
             </p>
           </div>
         </div>
@@ -1601,6 +1631,11 @@
         return "";
       }
 
+      const afdrukken = () => {
+        window.print();
+        setOpen(false);
+      };
+
       const verstuurMail = () => {
         const maandNaam = gekozenMaand ? maandLabel(gekozenMaand) : '';
         const onderwerp = `Maandrooster ${maandNaam}`;
@@ -1775,8 +1810,7 @@
                     <button onClick={() => setOpen(false)} className="flex-1 text-sm text-[#8A8F9C] hover:text-[#E8E6E1] border border-[#2A2E37] rounded-lg py-2">
                       Annuleren
                     </button>
-                    <button onClick={() => { window.print();
-                      setOpen(false); }} className="flex-1 text-sm font-semibold text-[#101216] bg-[#C9A24B] hover:bg-[#B8923F] rounded-lg py-2">
+                    <button onClick={afdrukken} className="flex-1 text-sm font-semibold text-[#101216] bg-[#C9A24B] hover:bg-[#B8923F] rounded-lg py-2">
                       Printen
                     </button>
                   </div>
@@ -1797,10 +1831,10 @@
             </div>
           )}
 
-          {/* Print-content */}
+          {/* Print-content - Verbeterd */}
           <div id="print-root" className="print-only">
             <div id="print-content" style={{ padding: "0", fontFamily: "Arial, sans-serif", color: "#000" }}>
-              <h1 style={{ fontSize: "16px", marginBottom: "2px", textTransform: "capitalize" }}>
+              <h1 style={{ fontSize: "16px", marginBottom: "4px", textTransform: "capitalize" }}>
                 D-Ploeg Veluwsekant — Maandrooster {gekozenMaand ? maandLabel(gekozenMaand) : ""}
                 {definitief[gekozenMaand] && " ✓"}
               </h1>
@@ -1811,7 +1845,7 @@
                       Naam</th>
                     {dagenInMaand.map((datum) => (
                       <th key={datum} style={{ border: "1px solid #999", padding: "2px", background: "#eee",
-                          minWidth: "20px" }}>
+                          minWidth: "20px", textAlign: "center" }}>
                         {Number(datum.slice(8, 10))}
                       </th>
                     ))}
@@ -1835,7 +1869,7 @@
                   ))}
                 </tbody>
               </table>
-              <p style={{ fontSize: "8px", color: "#555", marginTop: "6px" }}>
+              <p style={{ fontSize: "8px", color: "#555", marginTop: "4px" }}>
                 B = Bevelvoerder · M = Manschap · CTS = Chauffeur 4133 · CL = Chauffeur 4152 · OL = Opstapper 4152
               </p>
             </div>

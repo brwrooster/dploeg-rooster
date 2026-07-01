@@ -4,19 +4,22 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
 <title>D-Ploeg Veluwsekant</title>
-<!-- Externe scripts met crossorigin -->
-<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js" crossorigin="anonymous"></script>
-<script src="https://cdn.tailwindcss.com" crossorigin="anonymous"></script>
-<!-- html2pdf library met crossorigin - dubbele fallback -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
 
 <style>
   body { background: #101216; margin: 0; }
   ::-webkit-scrollbar { height: 6px; width: 6px; }
   ::-webkit-scrollbar-thumb { background: #2A2E37; border-radius: 3px; }
 
+  /* ===== Licht thema =====
+     Standaard volgt dit de systeeminstelling van het toestel (prefers-color-scheme).
+     Zodra iemand op de zon/maan-knop tikt, zet React het data-thema attribuut op
+     <html>, en dat overruled de systeeminstelling — ongeacht wat het toestel zegt.
+     Kazerne-dagrapport stijl: warm gebroken wit in plaats van kil kantoor-wit,
+     met dezelfde functie-kleuren (B/M/CTS/CL/OL) als anker tussen beide thema's. */
   @media (prefers-color-scheme: light) {
     html:not([data-thema="donker"]) body { background: #F2EFE9 !important; }
     html:not([data-thema="donker"]) ::-webkit-scrollbar-thumb { background: #D4CCC0 !important; }
@@ -108,6 +111,9 @@
   html[data-thema="licht"] .hover\:text-\[\#A8D5B5\]:hover { color: #2D6B41 !important; }
   html[data-thema="licht"] .hover\:text-\[\#E08A7A\]:hover { color: #B5483D !important; }
 
+  /* Dagstaat-kaart gebruikt een eigen gradient i.p.v. een vlakke bg-kleur — Tailwind's
+     from-/to- classes zetten CSS-variabelen, dus die targeten we hier apart zodat de
+     kaart in het lichte thema niet donker-met-donkere-tekst blijft. */
   html[data-thema="licht"] .from-\[\#1C2018\] { --tw-gradient-from: #EAF1EC var(--tw-gradient-from-position) !important; --tw-gradient-to: rgb(234 241 236 / 0) var(--tw-gradient-to-position) !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important; }
   html[data-thema="licht"] .to-\[\#16181D\] { --tw-gradient-to: #FFFFFF var(--tw-gradient-to-position) !important; }
   @media (prefers-color-scheme: light) {
@@ -115,8 +121,11 @@
     html:not([data-thema="donker"]) .to-\[\#16181D\] { --tw-gradient-to: #FFFFFF var(--tw-gradient-to-position) !important; }
   }
 
+  /* ===== Print =====
+     Bij afdrukken: verberg alles, toon alleen het print-overzicht (#print-root),
+     altijd in liggende stand met zwarte tekst op wit voor leesbaarheid op papier. */
   @media print {
-    @page { size: landscape; margin: 8mm; }
+    @page { size: landscape; margin: 10mm; }
     body * { visibility: hidden; }
     #print-root, #print-root * { visibility: visible; }
     #print-root { position: absolute; top: 0; left: 0; width: 100%; background: #fff !important; }
@@ -125,92 +134,10 @@
   @media print {
     .print-only { display: block; }
   }
-
-  /* Print PDF styling */
-  #pdf-content {
-    font-family: Arial, sans-serif;
-    padding: 20px;
-    background: white;
-    color: #000;
-  }
-  #pdf-content h1 {
-    font-size: 18px;
-    margin-bottom: 8px;
-    color: #1a1a1a;
-    border-bottom: 2px solid #333;
-    padding-bottom: 6px;
-  }
-  #pdf-content table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 10px;
-    margin-top: 8px;
-  }
-  #pdf-content th {
-    background: #f0f0f0;
-    border: 1px solid #999;
-    padding: 4px 3px;
-    text-align: center;
-    font-weight: bold;
-  }
-  #pdf-content td {
-    border: 1px solid #999;
-    padding: 3px 2px;
-    text-align: center;
-  }
-  #pdf-content .naam-col {
-    text-align: left;
-    font-weight: bold;
-    padding-left: 6px;
-    white-space: nowrap;
-  }
-  #pdf-content .legenda {
-    margin-top: 8px;
-    font-size: 8px;
-    color: #555;
-    border-top: 1px solid #ccc;
-    padding-top: 6px;
-  }
-  #pdf-content .legenda span {
-    display: inline-block;
-    margin-right: 12px;
-  }
-  .functie-b { background: #C9A24B; color: #fff; font-weight: bold; }
-  .functie-m { background: #5B8C8C; color: #fff; font-weight: bold; }
-  .functie-cts { background: #B5483D; color: #fff; font-weight: bold; }
-  .functie-cl { background: #3D6B9C; color: #fff; font-weight: bold; }
-  .functie-ol { background: #7A6B9C; color: #fff; font-weight: bold; }
-  .functie-leeg { background: #f9f9f9; color: #ccc; }
-
-  .gemaild-badge {
-    background: #1F3A2E;
-    color: #A8D5B5;
-    border: 1px solid #3D6B4C;
-    padding: 2px 12px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 500;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-  }
-  .gemaild-badge::before {
-    content: "✅";
-    font-size: 12px;
-  }
-  .gemaild-maand {
-    border-left: 3px solid #3D6B4C !important;
-    background-color: rgba(61, 107, 76, 0.08) !important;
-  }
 </style>
 <script>
-  // Error handling voor externe scripts
+
   window.addEventListener('error', function (e) {
-    // Negeer CORS-gerelateerde fouten die geen invloed hebben op de functionaliteit
-    if (e.message && (e.message.includes('Script error') || e.message.includes('cross-origin'))) {
-      console.warn('CORS fout genegeerd:', e.message);
-      return;
-    }
     var el = document.getElementById('error-box');
     if (!el) {
       el = document.createElement('div');
@@ -226,17 +153,11 @@
 <div id="root"></div>
 
 <script type="text/babel" data-presets="react">
-// ===== STAP 1: Controleer of html2pdf beschikbaar is =====
-if (typeof html2pdf === 'undefined') {
-  console.warn('html2pdf niet beschikbaar, PDF functionaliteit wordt uitgeschakeld');
-}
+const { useState, useEffect, useMemo, useCallback } = React;
 
-const { useState, useEffect, useMemo, useCallback, useRef } = React;
-
-// ===== Opslag voor gemailde maanden =====
-const GEMAILD_OPSLAG_KEY = "rooster_gemailde_maanden";
-
-// ===== THEMA =====
+// Beheert het thema: standaard volgt dit de systeeminstelling van het toestel,
+// maar zodra iemand handmatig wisselt (via ThemaKnop) wordt die keuze onthouden
+// in localStorage en overruled die voortaan de systeeminstelling.
 const THEMA_OPSLAG_KEY = "rooster_thema";
 
 function useThema() {
@@ -251,6 +172,7 @@ function useThema() {
     document.documentElement.setAttribute("data-thema", thema);
   }, [thema]);
 
+  // Als er nog geen handmatige keuze is opgeslagen, blijf de systeeminstelling volgen.
   useEffect(() => {
     if (localStorage.getItem(THEMA_OPSLAG_KEY)) return;
     if (!window.matchMedia) return;
@@ -285,14 +207,15 @@ function ThemaKnop({ licht, onClick, compact }) {
   );
 }
 
+// ====== CONFIG ======
 const API_BASE = window.ROOSTER_API_BASE || "https://dploeg-rooster.richard-bos.workers.dev";
 
 const FUNCTIES = [
-  { code: "B", label: "Bevelvoerder", slots: 1, color: "#C9A24B", cssClass: "functie-b" },
-  { code: "M", label: "Manschap", slots: 2, color: "#5B8C8C", cssClass: "functie-m" },
-  { code: "CTS", label: "Chauffeur 4133", slots: 1, color: "#B5483D", cssClass: "functie-cts" },
-  { code: "CL", label: "Chauffeur 4152", slots: 1, color: "#3D6B9C", cssClass: "functie-cl" },
-  { code: "OL", label: "Opstapper 4152", slots: 1, color: "#7A6B9C", cssClass: "functie-ol" },
+  { code: "B", label: "Bevelvoerder", slots: 1, color: "#C9A24B" },
+  { code: "M", label: "Manschap", slots: 2, color: "#5B8C8C" },
+  { code: "CTS", label: "Chauffeur 4133", slots: 1, color: "#B5483D" },
+  { code: "CL", label: "Chauffeur 4152", slots: 1, color: "#3D6B9C" },
+  { code: "OL", label: "Opstapper 4152", slots: 1, color: "#7A6B9C" },
 ];
 const FUNCTIE_ORDER = ["B", "M", "CTS", "CL", "OL"];
 const MAX_NAMEN = 10;
@@ -306,6 +229,8 @@ function formatDateNL(iso) {
   return d.toLocaleDateString("nl-NL", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
 }
 
+// Vast weekschema huishoudelijke taken — alleen getoond op dagen die ook een dienst hebben.
+// getDay(): 0=zondag, 1=maandag, ..., 4=donderdag, 5=vrijdag, 6=zaterdag
 const SCHOONMAAK_PER_WEEKDAG = {
   4: "Vloer schoonmaken",
   5: "Keuken schoonmaken",
@@ -316,6 +241,8 @@ function schoonmaakTaakVoor(iso) {
   return SCHOONMAAK_PER_WEEKDAG[dag] || null;
 }
 
+// ---------- Weer (Open-Meteo, Almere) ----------
+// WMO weather codes -> icoon + korte NL-omschrijving
 const WEERCODES = {
   0: ["☀️", "helder"],
   1: ["🌤️", "vrijwel onbewolkt"],
@@ -388,6 +315,7 @@ function WeerBadge({ datum, weerPerDatum }) {
   );
 }
 
+// ---------- API helper ----------
 function useApi() {
   const [token, setToken] = useState(() => sessionStorage.getItem("rooster_token") || null);
 
@@ -424,6 +352,7 @@ function useApi() {
   return { call, login, logout, ingelogd: !!token };
 }
 
+// ---------- Visual bits ----------
 function FunctieBadge({ code, small }) {
   const f = FUNCTIES.find((x) => x.code === code);
   if (!f) return null;
@@ -466,13 +395,13 @@ function EmptyState({ title, body }) {
 function DienstKaart({ dienst, personMap, beschikbaarMode, onToggleBeschikbaar, onSetAlle, weerPerDatum, onWijzigToewijzing }) {
   const heeftTekort = dienst.tekorten && dienst.tekorten.length > 0;
   const taak = schoonmaakTaakVoor(dienst.datum);
-  const [wijzigSlot, setWijzigSlot] = useState(null);
+  const [wijzigSlot, setWijzigSlot] = useState(null); // { code, persoonId } of null
 
   const handmatigSet = useMemo(() => new Set(dienst.handmatigPersonen || []), [dienst.handmatigPersonen]);
 
   function kandidatenVoor(code, huidigePersoonId) {
     const beschikbaarIds = new Set(dienst.beschikbaar || []);
-    const toegewezenAan = {};
+    const toegewezenAan = {}; // persoonId -> functieCode
     FUNCTIE_ORDER.forEach((c) => (dienst.toewijzing?.[c] || []).forEach((pid) => (toegewezenAan[pid] = c)));
 
     const vrij = [];
@@ -487,6 +416,8 @@ function DienstKaart({ dienst, personMap, beschikbaarMode, onToggleBeschikbaar, 
       if (huidigeFunctieVanP === undefined) {
         vrij.push(p);
       } else if (huidigePersoonId) {
+        // Ruil is alleen zinvol/mogelijk als de huidige bewoner van deze plek
+        // ook de functie van p zou mogen overnemen.
         const huidigePersoon = personMap[huidigePersoonId];
         const magRuilen = huidigePersoon && (huidigePersoon.functies || []).some((f) => f.code === huidigeFunctieVanP);
         if (magRuilen) ruil.push({ ...p, ruilFunctie: huidigeFunctieVanP });
@@ -694,6 +625,7 @@ function Dagstaat({ dienst, personMap, weerPerDatum }) {
   );
 }
 
+// ---------- Guest view ----------
 function GastWeergave({ onGoToLogin }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
@@ -708,7 +640,7 @@ function GastWeergave({ onGoToLogin }) {
         .catch(() => setError("Kon het rooster niet laden."));
     }
     haalData();
-    const interval = setInterval(haalData, 2 * 60 * 1000);
+    const interval = setInterval(haalData, 2 * 60 * 1000); // elke 2 minuten
     return () => clearInterval(interval);
   }, []);
 
@@ -767,6 +699,7 @@ function GastWeergave({ onGoToLogin }) {
   );
 }
 
+// ---------- Login ----------
 function LoginScherm({ api, onLoggedIn, onGuest }) {
   const [gebruikersnaam, setGebruikersnaam] = useState("");
   const [wachtwoord, setWachtwoord] = useState("");
@@ -821,6 +754,7 @@ function LoginScherm({ api, onLoggedIn, onGuest }) {
   );
 }
 
+// ---------- Admin: Team ----------
 function TeamTab({ api, refreshKey, bumpRefresh }) {
   const [personen, setPersonen] = useState([]);
   const [nieuweNaam, setNieuweNaam] = useState("");
@@ -832,6 +766,7 @@ function TeamTab({ api, refreshKey, bumpRefresh }) {
     api.call("/api/personen").then((d) => setPersonen(d.personen)).finally(() => setLaden(false));
   }, [refreshKey]);
 
+  // Stille auto-refresh elke 2 minuten — geen laad-indicator, geen verstoring van open invoervelden.
   useEffect(() => {
     const interval = setInterval(() => {
       api.call("/api/personen").then((d) => setPersonen(d.personen)).catch(() => {});
@@ -953,6 +888,7 @@ function TeamTab({ api, refreshKey, bumpRefresh }) {
   );
 }
 
+// ---------- Admin: Diensten ----------
 function DienstenTab({ api, refreshKey, bumpRefresh }) {
   const [diensten, setDiensten] = useState([]);
   const [personen, setPersonen] = useState([]);
@@ -965,16 +901,6 @@ function DienstenTab({ api, refreshKey, bumpRefresh }) {
   const [periodeInterval, setPeriodeInterval] = useState(4);
   const weerPerDatum = useWeerAlmere();
 
-  // Gemailde maanden status
-  const [gemaildeMaanden, setGemaildeMaanden] = useState(() => {
-    try {
-      const data = localStorage.getItem(GEMAILD_OPSLAG_KEY);
-      return data ? JSON.parse(data) : {};
-    } catch {
-      return {};
-    }
-  });
-
   useEffect(() => {
     setLaden(true);
     Promise.all([api.call("/api/diensten"), api.call("/api/personen")])
@@ -982,6 +908,8 @@ function DienstenTab({ api, refreshKey, bumpRefresh }) {
       .finally(() => setLaden(false));
   }, [refreshKey]);
 
+  // Stille auto-refresh elke 2 minuten — geen laad-indicator, geen verstoring van
+  // openstaande bewerkmodus (editId) of ingevoerde datums.
   useEffect(() => {
     const interval = setInterval(() => {
       Promise.all([api.call("/api/diensten"), api.call("/api/personen")])
@@ -996,19 +924,6 @@ function DienstenTab({ api, refreshKey, bumpRefresh }) {
     personen.forEach((p) => (m[p.id] = p));
     return m;
   }, [personen]);
-
-  function markeerAlsGemaild(maand) {
-    const nieuweStatus = {
-      ...gemaildeMaanden,
-      [maand]: {
-        datum: new Date().toISOString(),
-        tijd: new Date().toLocaleString("nl-NL")
-      }
-    };
-    setGemaildeMaanden(nieuweStatus);
-    localStorage.setItem(GEMAILD_OPSLAG_KEY, JSON.stringify(nieuweStatus));
-    bumpRefresh();
-  }
 
   async function addDienst() {
     if (!nieuweDatum) return;
@@ -1092,27 +1007,11 @@ function DienstenTab({ api, refreshKey, bumpRefresh }) {
 
   if (laden) return <div className="text-[#6B7280] text-sm">Laden...</div>;
 
-  const dienstenPerMaand = useMemo(() => {
-    const map = {};
-    diensten.forEach(d => {
-      const maand = d.datum.slice(0, 7);
-      if (!map[maand]) map[maand] = [];
-      map[maand].push(d);
-    });
-    return map;
-  }, [diensten]);
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-[#E8E6E1] font-semibold text-base">Diensten</h2>
         <div className="flex items-center gap-2">
-          <MailKnop 
-            diensten={diensten} 
-            personen={personen} 
-            onGemaild={markeerAlsGemaild}
-            gemaildeMaanden={gemaildeMaanden}
-          />
           <PrintKnop diensten={diensten} personen={personen} />
           {diensten.length > 0 && (
             <button onClick={indelenAlles} disabled={personen.length === 0} className="text-[11px] font-medium text-[#101216] bg-[#C9A24B] hover:bg-[#B8923F] disabled:opacity-30 rounded-lg px-3 py-1.5">Indelen</button>
@@ -1155,45 +1054,23 @@ function DienstenTab({ api, refreshKey, bumpRefresh }) {
       {diensten.length === 0 ? (
         <EmptyState title="Nog geen diensten" body="Voeg een datum toe, of maak een hele periode in 1x aan." />
       ) : (
-        <div className="space-y-4">
-          {Object.keys(dienstenPerMaand).sort().map(maand => {
-            const isGemaild = !!gemaildeMaanden[maand];
-            const gemaildInfo = gemaildeMaanden[maand];
-            const maandDiensten = dienstenPerMaand[maand];
-            
-            return (
-              <div key={maand} className={isGemaild ? "gemaild-maand rounded-xl" : ""}>
-                <div className="flex items-center justify-between px-1 mb-2">
-                  <span className="text-[13px] font-semibold text-[#E8E6E1] capitalize">
-                    {maandLabel(maand)}
-                  </span>
-                  {isGemaild && (
-                    <span className="gemaild-badge">
-                      Gemaild op {gemaildInfo.tijd}
-                    </span>
-                  )}
-                </div>
-                <div className="space-y-3">
-                  {maandDiensten.map((d) => (
-                    <div key={d.id}>
-                      <div className="flex items-center justify-between mb-1.5 px-1">
-                        <button onClick={() => setEditId(editId === d.id ? null : d.id)} className="text-[11px] uppercase tracking-wider text-[#6B7280] hover:text-[#8A8F9C]">
-                          {editId === d.id ? "Klaar met wijzigen" : "Beschikbaar: " + (d.beschikbaar || []).length + "/" + personen.length}
-                        </button>
-                        <button onClick={() => removeDienst(d.id)} className="text-[#5A5F68] hover:text-[#E08A7A] text-xs">verwijder</button>
-                      </div>
-                      <DienstKaart dienst={d} personMap={personMap} beschikbaarMode={editId === d.id} onToggleBeschikbaar={toggleBeschikbaar} onSetAlle={setAlle} weerPerDatum={weerPerDatum} onWijzigToewijzing={wijzigToewijzing} />
-                      {editId !== d.id && (
-                        <div className="flex justify-end mt-1.5">
-                          <button onClick={() => indelenEen(d.id)} disabled={(d.beschikbaar || []).length === 0} className="text-[11px] font-medium text-[#C9A24B] hover:text-[#DDB35E] disabled:opacity-30">Opnieuw indelen</button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+        <div className="space-y-3">
+          {diensten.map((d) => (
+            <div key={d.id}>
+              <div className="flex items-center justify-between mb-1.5 px-1">
+                <button onClick={() => setEditId(editId === d.id ? null : d.id)} className="text-[11px] uppercase tracking-wider text-[#6B7280] hover:text-[#8A8F9C]">
+                  {editId === d.id ? "Klaar met wijzigen" : "Beschikbaar: " + (d.beschikbaar || []).length + "/" + personen.length}
+                </button>
+                <button onClick={() => removeDienst(d.id)} className="text-[#5A5F68] hover:text-[#E08A7A] text-xs">verwijder</button>
               </div>
-            );
-          })}
+              <DienstKaart dienst={d} personMap={personMap} beschikbaarMode={editId === d.id} onToggleBeschikbaar={toggleBeschikbaar} onSetAlle={setAlle} weerPerDatum={weerPerDatum} onWijzigToewijzing={wijzigToewijzing} />
+              {editId !== d.id && (
+                <div className="flex justify-end mt-1.5">
+                  <button onClick={() => indelenEen(d.id)} disabled={(d.beschikbaar || []).length === 0} className="text-[11px] font-medium text-[#C9A24B] hover:text-[#DDB35E] disabled:opacity-30">Opnieuw indelen</button>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
 
@@ -1202,6 +1079,7 @@ function DienstenTab({ api, refreshKey, bumpRefresh }) {
   );
 }
 
+// ---------- Print: maandoverzicht (liggend, namen × datums, functiecode per cel) ----------
 function maandLabel(jaarMaand) {
   const [jaar, maand] = jaarMaand.split("-").map(Number);
   const d = new Date(jaar, maand - 1, 1);
@@ -1210,86 +1088,8 @@ function maandLabel(jaarMaand) {
 
 function beschikbareMaanden(diensten) {
   const set = new Set();
-  diensten.forEach((d) => set.add(d.datum.slice(0, 7)));
+  diensten.forEach((d) => set.add(d.datum.slice(0, 7))); // "YYYY-MM"
   return [...set].sort();
-}
-
-// PDF generatie functie - zonder weekend kleur
-function genereerPDFHTML(diensten, personen, gekozenMaand) {
-  if (!gekozenMaand) return "";
-
-  const [jaar, maand] = gekozenMaand.split("-").map(Number);
-  const aantalDagen = new Date(jaar, maand, 0).getDate();
-  const datums = [];
-  for (let dag = 1; dag <= aantalDagen; dag++) {
-    datums.push(gekozenMaand + "-" + String(dag).padStart(2, "0"));
-  }
-
-  const dienstPerDatum = {};
-  diensten.forEach((d) => (dienstPerDatum[d.datum] = d));
-
-  function functieVoor(persoonId, dienst) {
-    if (!dienst || !dienst.toewijzing) return "";
-    for (const code of FUNCTIE_ORDER) {
-      if ((dienst.toewijzing[code] || []).includes(persoonId)) return code;
-    }
-    return "";
-  }
-
-  function getFunctieClass(code) {
-    const f = FUNCTIES.find(x => x.code === code);
-    return f ? f.cssClass : "";
-  }
-
-  let html = `
-    <div id="pdf-content">
-      <h1>D-Ploeg Veluwsekant — Maandrooster ${maandLabel(gekozenMaand)}</h1>
-      <table>
-        <thead>
-          <tr>
-            <th style="text-align:left;padding-left:6px;">Naam</th>
-  `;
-
-  for (const datum of datums) {
-    const dagNr = Number(datum.slice(8, 10));
-    html += `<th>${dagNr}</th>`;
-  }
-
-  html += `
-          </tr>
-        </thead>
-        <tbody>
-  `;
-
-  for (const p of personen) {
-    html += `<tr><td class="naam-col">${p.naam}</td>`;
-    for (const datum of datums) {
-      const dienst = dienstPerDatum[datum];
-      const code = functieVoor(p.id, dienst);
-      const cssClass = code ? getFunctieClass(code) : "functie-leeg";
-      html += `<td class="${cssClass}">${code || "-"}</td>`;
-    }
-    html += `</tr>`;
-  }
-
-  html += `
-        </tbody>
-      </table>
-      <div class="legenda">
-        <span><strong>Legenda:</strong></span>
-  `;
-
-  for (const f of FUNCTIES) {
-    html += `<span class="${f.cssClass}" style="padding:1px 6px;border-radius:3px;display:inline-block;margin-right:8px;">${f.code}</span>`;
-  }
-
-  html += `
-        <span style="display:block;margin-top:4px;">Gegenereerd: ${new Date().toLocaleString("nl-NL")}</span>
-      </div>
-    </div>
-  `;
-
-  return html;
 }
 
 function PrintKnop({ diensten, personen }) {
@@ -1328,12 +1128,6 @@ function PrintKnop({ diensten, personen }) {
       if ((dienst.toewijzing[code] || []).includes(persoonId)) return code;
     }
     return "";
-  }
-
-  function isWeekend(datum) {
-    const d = new Date(datum + "T00:00:00");
-    const dag = d.getDay();
-    return dag === 0 || dag === 6;
   }
 
   if (maanden.length === 0) return null;
@@ -1379,38 +1173,33 @@ function PrintKnop({ diensten, personen }) {
         </div>
       )}
 
+      {/* Onzichtbaar op het scherm, alleen getoond aan de printer via @media print */}
       <div id="print-root" className="print-only">
         <div style={{ padding: "0", fontFamily: "Arial, sans-serif", color: "#000" }}>
           <h1 style={{ fontSize: "16px", marginBottom: "2px", textTransform: "capitalize" }}>
             D-Ploeg Veluwsekant — Maandrooster {gekozenMaand ? maandLabel(gekozenMaand) : ""}
           </h1>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "8px" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9px" }}>
             <thead>
               <tr>
-                <th style={{ border: "1px solid #999", padding: "2px 3px", textAlign: "left", background: "#eee" }}>Naam</th>
-                {dagenInMaand.map((datum) => {
-                  const weekend = isWeekend(datum);
-                  return (
-                    <th key={datum} style={{ border: "1px solid #999", padding: "1px 2px", background: weekend ? "#e8e0d8" : "#eee", minWidth: "18px" }}>
-                      {Number(datum.slice(8, 10))}
-                    </th>
-                  );
-                })}
+                <th style={{ border: "1px solid #999", padding: "3px 4px", textAlign: "left", background: "#eee" }}>Naam</th>
+                {dagenInMaand.map((datum) => (
+                  <th key={datum} style={{ border: "1px solid #999", padding: "2px", background: "#eee", minWidth: "20px" }}>
+                    {Number(datum.slice(8, 10))}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {personen.map((p) => (
                 <tr key={p.id}>
-                  <td style={{ border: "1px solid #999", padding: "2px 3px", fontWeight: "bold", whiteSpace: "nowrap" }}>{p.naam}</td>
+                  <td style={{ border: "1px solid #999", padding: "3px 4px", fontWeight: "bold", whiteSpace: "nowrap" }}>{p.naam}</td>
                   {dagenInMaand.map((datum) => {
                     const dienst = dienstPerDatum[datum];
                     const code = functieVoor(p.id, dienst);
-                    const weekend = isWeekend(datum);
-                    const bgColor = code ? FUNCTIES.find(f => f.code === code)?.color || "#fff" : "#f9f9f9";
-                    const textColor = code ? "#fff" : "#ccc";
                     return (
-                      <td key={datum} style={{ border: "1px solid #999", padding: "1px 2px", textAlign: "center", background: weekend ? "#f5f0e8" : bgColor, color: textColor, fontWeight: code ? "bold" : "normal" }}>
-                        {code || "-"}
+                      <td key={datum} style={{ border: "1px solid #999", padding: "2px", textAlign: "center" }}>
+                        {code}
                       </td>
                     );
                   })}
@@ -1418,207 +1207,11 @@ function PrintKnop({ diensten, personen }) {
               ))}
             </tbody>
           </table>
-          <div style={{ fontSize: "7px", color: "#555", marginTop: "4px", borderTop: "1px solid #ccc", paddingTop: "4px" }}>
-            <strong>Legenda:</strong>
-            {FUNCTIES.map(f => (
-              <span key={f.code} style={{ display: "inline-block", marginRight: "8px", background: f.color, color: "#fff", padding: "0 4px", borderRadius: "2px" }}>
-                {f.code}
-              </span>
-            ))}
-            <span style={{ marginLeft: "12px" }}>Gegenereerd: {new Date().toLocaleString("nl-NL")}</span>
-          </div>
+          <p style={{ fontSize: "8px", color: "#555", marginTop: "6px" }}>
+            B = Bevelvoerder · M = Manschap · CTS = Chauffeur 4133 · CL = Chauffeur 4152 · OL = Opstapper 4152
+          </p>
         </div>
       </div>
-    </>
-  );
-}
-
-// ===== MailKnop met CORS-fix =====
-function MailKnop({ diensten, personen, onGemaild, gemaildeMaanden }) {
-  const [open, setOpen] = useState(false);
-  const [bezig, setBezig] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
-  const maanden = useMemo(() => beschikbareMaanden(diensten), [diensten]);
-  const [gekozenMaand, setGekozenMaand] = useState(() => maanden[maanden.length - 1] || "");
-  
-  const [mailAdres, setMailAdres] = useState("Richard.bos@vrfgv.nl, Maurice.raven@vrfgv.nl, planning@vrfgv.nl");
-
-  useEffect(() => {
-    if (!gekozenMaand && maanden.length > 0) setGekozenMaand(maanden[maanden.length - 1]);
-  }, [gekozenMaand, maanden]);
-
-  function genereerMailBody() {
-    if (!gekozenMaand) return "";
-    const maandNaam = maandLabel(gekozenMaand);
-    return `Beste planners,
-
-Hierbij ons aangepast rooster voor ${maandNaam}.
-Graag 1 op 1 overnemen in InPlanning.
-
-Alvast bedankt!`;
-  }
-
-  async function genereerEnVerstuurPDF() {
-    setBezig(true);
-    setErrorMsg("");
-    
-    try {
-      // Controleer of html2pdf beschikbaar is
-      if (typeof html2pdf === 'undefined') {
-        throw new Error('PDF bibliotheek niet geladen. Probeer de pagina te herladen.');
-      }
-
-      const pdfHTML = genereerPDFHTML(diensten, personen, gekozenMaand);
-      
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = pdfHTML;
-      tempDiv.style.position = 'absolute';
-      tempDiv.style.left = '-9999px';
-      tempDiv.style.top = '-9999px';
-      document.body.appendChild(tempDiv);
-
-      const pdfElement = tempDiv.querySelector('#pdf-content');
-      
-      const opt = {
-        margin:        [5, 5, 5, 5],
-        filename:     `Maandrooster_${gekozenMaand}_D-Ploeg.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
-      };
-
-      const pdfBlob = await html2pdf().set(opt).from(pdfElement).outputPdf('blob');
-      document.body.removeChild(tempDiv);
-
-      const pdfFile = new File([pdfBlob], `Maandrooster_${gekozenMaand}_D-Ploeg.pdf`, { type: 'application/pdf' });
-
-      // Share API met try/catch
-      if (navigator.share) {
-        try {
-          await navigator.share({
-            title: `Maandrooster ${maandLabel(gekozenMaand)} - D-Ploeg`,
-            text: genereerMailBody(),
-            files: [pdfFile]
-          });
-          
-          if (onGemaild) {
-            onGemaild(gekozenMaand);
-          }
-          
-          setBezig(false);
-          setOpen(false);
-          return;
-        } catch (shareError) {
-          if (shareError.name === 'AbortError') {
-            setBezig(false);
-            return;
-          }
-          console.warn('Share error:', shareError);
-        }
-      }
-
-      // Fallback: download PDF
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(pdfBlob);
-      link.download = `Maandrooster_${gekozenMaand}_D-Ploeg.pdf`;
-      link.click();
-      
-      alert(`✅ PDF is gedownload!\n\nJe kunt deze handmatig mailen naar:\n${mailAdres}\n\nMet de tekst:\n${genereerMailBody()}`);
-      
-      setBezig(false);
-      setOpen(false);
-      
-    } catch (error) {
-      console.error("PDF generatie fout:", error);
-      setErrorMsg(error.message || "Er ging iets mis bij het genereren van de PDF.");
-      setBezig(false);
-    }
-  }
-
-  if (maanden.length === 0) return null;
-
-  const isGemaild = gemaildeMaanden && gemaildeMaanden[gekozenMaand];
-
-  return (
-    <>
-      <button
-        onClick={() => setOpen(true)}
-        className="text-[11px] font-medium text-[#7FAE8C] hover:text-[#A8D5B5] border border-[#3D6B4C] rounded-lg px-3 py-1.5 flex-shrink-0"
-      >
-        📧 Mail met PDF
-      </button>
-
-      {open && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setOpen(false)}>
-          <div
-            className="bg-[#16181D] border border-[#2A2E37] rounded-xl p-5 max-w-md w-full max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="text-[#E8E6E1] font-semibold text-base mb-3">📧 Mail maandrooster met PDF</div>
-            
-            <label className="block text-[11px] uppercase tracking-wider text-[#6B7280] mb-1.5">Maand</label>
-            <select
-              value={gekozenMaand}
-              onChange={(e) => setGekozenMaand(e.target.value)}
-              className="w-full bg-[#1C1F26] border border-[#2E323C] rounded-lg px-3 py-2 text-sm text-[#E8E6E1] outline-none focus:border-[#B5483D] mb-4 capitalize"
-            >
-              {maanden.map((m) => (
-                <option key={m} value={m} className="capitalize">{maandLabel(m)}</option>
-              ))}
-            </select>
-
-            <label className="block text-[11px] uppercase tracking-wider text-[#6B7280] mb-1.5">Aan (alleen ter info):</label>
-            <input
-              type="text"
-              value={mailAdres}
-              onChange={(e) => setMailAdres(e.target.value)}
-              className="w-full bg-[#1C1F26] border border-[#2E323C] rounded-lg px-3 py-2 text-sm text-[#E8E6E1] outline-none focus:border-[#B5483D] mb-4"
-            />
-
-            {isGemaild && (
-              <div className="bg-[#1F3A2E] border border-[#3D6B4C] rounded-lg p-2 mb-3 flex items-center gap-2">
-                <span className="text-[#A8D5B5] text-sm">✅ Gemaild op {gemaildeMaanden[gekozenMaand].tijd}</span>
-              </div>
-            )}
-
-            {errorMsg && (
-              <div className="bg-[#1F1B12] border border-[#3A3320] rounded-lg p-2 mb-3">
-                <span className="text-[#E0A33D] text-sm">⚠️ {errorMsg}</span>
-              </div>
-            )}
-
-            <div className="bg-[#1F1B12] border border-[#3A3320] rounded-lg p-3 mb-4">
-              <div className="text-[11px] text-[#C9A24B] font-medium mb-1">📝 Mail tekst:</div>
-              <div className="text-[12px] text-[#A8ABB3] whitespace-pre-line">
-                Beste planners,
-
-                Hierbij ons aangepast rooster voor {gekozenMaand ? maandLabel(gekozenMaand) : "..."}.
-                Graag 1 op 1 overnemen in InPlanning.
-
-                Alvast bedankt!
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <button onClick={() => setOpen(false)} className="flex-1 text-sm text-[#8A8F9C] hover:text-[#E8E6E1] border border-[#2A2E37] rounded-lg py-2">
-                Annuleren
-              </button>
-              <button 
-                onClick={genereerEnVerstuurPDF} 
-                disabled={bezig}
-                className="flex-1 text-sm font-semibold text-[#101216] bg-[#7FAE8C] hover:bg-[#6B9A7C] disabled:opacity-50 rounded-lg py-2"
-              >
-                {bezig ? "⏳ PDF maken..." : "📧 Mail met PDF"}
-              </button>
-            </div>
-            <div className="text-[10px] text-[#5A5F68] mt-3 space-y-1">
-              <p><span className="text-[#8AA0B5]">ℹ️</span> De PDF wordt gedeeld via de Share functie van je browser.</p>
-              <p><span className="text-[#7FAE8C]">✅</span> Na verzenden wordt de maand definitief gemarkeerd als "gemaild".</p>
-              <p><span className="text-[#E0A33D]">💡</span> Werkt de Share niet? De PDF wordt automatisch gedownload.</p>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
@@ -1671,6 +1264,7 @@ function VerdelingTabel({ personen, diensten }) {
   );
 }
 
+// ---------- Admin shell ----------
 function AdminApp({ api, onLogout, onViewGuest }) {
   const [tab, setTab] = useState("team");
   const [refreshKey, setRefreshKey] = useState(0);
@@ -1714,6 +1308,7 @@ function AdminApp({ api, onLogout, onViewGuest }) {
   );
 }
 
+// ---------- Root ----------
 function App() {
   const api = useApi();
   const [view, setView] = useState(() => (window.location.hash === "#gast" ? "guest" : api.ingelogd ? "admin" : "login"));

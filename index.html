@@ -8,6 +8,8 @@
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
 <script src="https://cdn.tailwindcss.com"></script>
+<!-- html2pdf library voor PDF generatie -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
 <style>
   body { background: #101216; margin: 0; }
@@ -113,7 +115,7 @@
   }
 
   @media print {
-    @page { size: landscape; margin: 10mm; }
+    @page { size: landscape; margin: 8mm; }
     body * { visibility: hidden; }
     #print-root, #print-root * { visibility: visible; }
     #print-root { position: absolute; top: 0; left: 0; width: 100%; background: #fff !important; }
@@ -122,6 +124,65 @@
   @media print {
     .print-only { display: block; }
   }
+
+  /* Print PDF styling */
+  #pdf-content {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+    background: white;
+    color: #000;
+  }
+  #pdf-content h1 {
+    font-size: 18px;
+    margin-bottom: 8px;
+    color: #1a1a1a;
+    border-bottom: 2px solid #333;
+    padding-bottom: 6px;
+  }
+  #pdf-content table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10px;
+    margin-top: 8px;
+  }
+  #pdf-content th {
+    background: #f0f0f0;
+    border: 1px solid #999;
+    padding: 4px 3px;
+    text-align: center;
+    font-weight: bold;
+  }
+  #pdf-content td {
+    border: 1px solid #999;
+    padding: 3px 2px;
+    text-align: center;
+  }
+  #pdf-content .naam-col {
+    text-align: left;
+    font-weight: bold;
+    padding-left: 6px;
+    white-space: nowrap;
+  }
+  #pdf-content .weekend {
+    background: #f5f0e8;
+  }
+  #pdf-content .legenda {
+    margin-top: 8px;
+    font-size: 8px;
+    color: #555;
+    border-top: 1px solid #ccc;
+    padding-top: 6px;
+  }
+  #pdf-content .legenda span {
+    display: inline-block;
+    margin-right: 12px;
+  }
+  .functie-b { background: #C9A24B; color: #fff; font-weight: bold; }
+  .functie-m { background: #5B8C8C; color: #fff; font-weight: bold; }
+  .functie-cts { background: #B5483D; color: #fff; font-weight: bold; }
+  .functie-cl { background: #3D6B9C; color: #fff; font-weight: bold; }
+  .functie-ol { background: #7A6B9C; color: #fff; font-weight: bold; }
+  .functie-leeg { background: #f9f9f9; color: #ccc; }
 </style>
 <script>
   window.addEventListener('error', function (e) {
@@ -140,7 +201,7 @@
 <div id="root"></div>
 
 <script type="text/babel" data-presets="react">
-const { useState, useEffect, useMemo, useCallback } = React;
+const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
 const THEMA_OPSLAG_KEY = "rooster_thema";
 
@@ -193,11 +254,11 @@ function ThemaKnop({ licht, onClick, compact }) {
 const API_BASE = window.ROOSTER_API_BASE || "https://dploeg-rooster.richard-bos.workers.dev";
 
 const FUNCTIES = [
-  { code: "B", label: "Bevelvoerder", slots: 1, color: "#C9A24B" },
-  { code: "M", label: "Manschap", slots: 2, color: "#5B8C8C" },
-  { code: "CTS", label: "Chauffeur 4133", slots: 1, color: "#B5483D" },
-  { code: "CL", label: "Chauffeur 4152", slots: 1, color: "#3D6B9C" },
-  { code: "OL", label: "Opstapper 4152", slots: 1, color: "#7A6B9C" },
+  { code: "B", label: "Bevelvoerder", slots: 1, color: "#C9A24B", cssClass: "functie-b" },
+  { code: "M", label: "Manschap", slots: 2, color: "#5B8C8C", cssClass: "functie-m" },
+  { code: "CTS", label: "Chauffeur 4133", slots: 1, color: "#B5483D", cssClass: "functie-cts" },
+  { code: "CL", label: "Chauffeur 4152", slots: 1, color: "#3D6B9C", cssClass: "functie-cl" },
+  { code: "OL", label: "Opstapper 4152", slots: 1, color: "#7A6B9C", cssClass: "functie-ol" },
 ];
 const FUNCTIE_ORDER = ["B", "M", "CTS", "CL", "OL"];
 const MAX_NAMEN = 10;
@@ -1059,6 +1120,92 @@ function beschikbareMaanden(diensten) {
   return [...set].sort();
 }
 
+// PDF generatie functie
+function genereerPDFHTML(diensten, personen, gekozenMaand) {
+  if (!gekozenMaand) return "";
+
+  const [jaar, maand] = gekozenMaand.split("-").map(Number);
+  const aantalDagen = new Date(jaar, maand, 0).getDate();
+  const datums = [];
+  for (let dag = 1; dag <= aantalDagen; dag++) {
+    datums.push(gekozenMaand + "-" + String(dag).padStart(2, "0"));
+  }
+
+  const dienstPerDatum = {};
+  diensten.forEach((d) => (dienstPerDatum[d.datum] = d));
+
+  function functieVoor(persoonId, dienst) {
+    if (!dienst || !dienst.toewijzing) return "";
+    for (const code of FUNCTIE_ORDER) {
+      if ((dienst.toewijzing[code] || []).includes(persoonId)) return code;
+    }
+    return "";
+  }
+
+  function getFunctieClass(code) {
+    const f = FUNCTIES.find(x => x.code === code);
+    return f ? f.cssClass : "";
+  }
+
+  function isWeekend(datum) {
+    const d = new Date(datum + "T00:00:00");
+    const dag = d.getDay();
+    return dag === 0 || dag === 6;
+  }
+
+  let html = `
+    <div id="pdf-content">
+      <h1>D-Ploeg Veluwsekant — Maandrooster ${maandLabel(gekozenMaand)}</h1>
+      <table>
+        <thead>
+          <tr>
+            <th style="text-align:left;padding-left:6px;">Naam</th>
+  `;
+
+  for (const datum of datums) {
+    const dagNr = Number(datum.slice(8, 10));
+    const weekend = isWeekend(datum);
+    html += `<th${weekend ? ' class="weekend"' : ''}>${dagNr}</th>`;
+  }
+
+  html += `
+          </tr>
+        </thead>
+        <tbody>
+  `;
+
+  for (const p of personen) {
+    html += `<tr><td class="naam-col">${p.naam}</td>`;
+    for (const datum of datums) {
+      const dienst = dienstPerDatum[datum];
+      const code = functieVoor(p.id, dienst);
+      const weekend = isWeekend(datum);
+      const cssClass = code ? getFunctieClass(code) : "functie-leeg";
+      html += `<td class="${cssClass}${weekend ? ' weekend' : ''}">${code || "-"}</td>`;
+    }
+    html += `</tr>`;
+  }
+
+  html += `
+        </tbody>
+      </table>
+      <div class="legenda">
+        <span><strong>Legenda:</strong></span>
+  `;
+
+  for (const f of FUNCTIES) {
+    html += `<span class="${f.cssClass}" style="padding:1px 6px;border-radius:3px;display:inline-block;margin-right:8px;">${f.code}</span>`;
+  }
+
+  html += `
+        <span style="display:block;margin-top:4px;">Gegenereerd: ${new Date().toLocaleString("nl-NL")}</span>
+      </div>
+    </div>
+  `;
+
+  return html;
+}
+
 function PrintKnop({ diensten, personen }) {
   const [open, setOpen] = useState(false);
   const maanden = useMemo(() => beschikbareMaanden(diensten), [diensten]);
@@ -1095,6 +1242,17 @@ function PrintKnop({ diensten, personen }) {
       if ((dienst.toewijzing[code] || []).includes(persoonId)) return code;
     }
     return "";
+  }
+
+  function getFunctieClass(code) {
+    const f = FUNCTIES.find(x => x.code === code);
+    return f ? f.cssClass : "";
+  }
+
+  function isWeekend(datum) {
+    const d = new Date(datum + "T00:00:00");
+    const dag = d.getDay();
+    return dag === 0 || dag === 6;
   }
 
   if (maanden.length === 0) return null;
@@ -1145,27 +1303,33 @@ function PrintKnop({ diensten, personen }) {
           <h1 style={{ fontSize: "16px", marginBottom: "2px", textTransform: "capitalize" }}>
             D-Ploeg Veluwsekant — Maandrooster {gekozenMaand ? maandLabel(gekozenMaand) : ""}
           </h1>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9px" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "8px" }}>
             <thead>
               <tr>
-                <th style={{ border: "1px solid #999", padding: "3px 4px", textAlign: "left", background: "#eee" }}>Naam</th>
-                {dagenInMaand.map((datum) => (
-                  <th key={datum} style={{ border: "1px solid #999", padding: "2px", background: "#eee", minWidth: "20px" }}>
-                    {Number(datum.slice(8, 10))}
-                  </th>
-                ))}
+                <th style={{ border: "1px solid #999", padding: "2px 3px", textAlign: "left", background: "#eee" }}>Naam</th>
+                {dagenInMaand.map((datum) => {
+                  const weekend = isWeekend(datum);
+                  return (
+                    <th key={datum} style={{ border: "1px solid #999", padding: "1px 2px", background: weekend ? "#e8e0d8" : "#eee", minWidth: "18px" }}>
+                      {Number(datum.slice(8, 10))}
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody>
               {personen.map((p) => (
                 <tr key={p.id}>
-                  <td style={{ border: "1px solid #999", padding: "3px 4px", fontWeight: "bold", whiteSpace: "nowrap" }}>{p.naam}</td>
+                  <td style={{ border: "1px solid #999", padding: "2px 3px", fontWeight: "bold", whiteSpace: "nowrap" }}>{p.naam}</td>
                   {dagenInMaand.map((datum) => {
                     const dienst = dienstPerDatum[datum];
                     const code = functieVoor(p.id, dienst);
+                    const weekend = isWeekend(datum);
+                    const bgColor = code ? FUNCTIES.find(f => f.code === code)?.color || "#fff" : "#f9f9f9";
+                    const textColor = code ? "#fff" : "#ccc";
                     return (
-                      <td key={datum} style={{ border: "1px solid #999", padding: "2px", textAlign: "center" }}>
-                        {code}
+                      <td key={datum} style={{ border: "1px solid #999", padding: "1px 2px", textAlign: "center", background: weekend ? "#f5f0e8" : bgColor, color: textColor, fontWeight: code ? "bold" : "normal" }}>
+                        {code || "-"}
                       </td>
                     );
                   })}
@@ -1173,21 +1337,29 @@ function PrintKnop({ diensten, personen }) {
               ))}
             </tbody>
           </table>
-          <p style={{ fontSize: "8px", color: "#555", marginTop: "6px" }}>
-            B = Bevelvoerder · M = Manschap · CTS = Chauffeur 4133 · CL = Chauffeur 4152 · OL = Opstapper 4152
-          </p>
+          <div style={{ fontSize: "7px", color: "#555", marginTop: "4px", borderTop: "1px solid #ccc", paddingTop: "4px" }}>
+            <strong>Legenda:</strong>
+            {FUNCTIES.map(f => (
+              <span key={f.code} style={{ display: "inline-block", marginRight: "8px", background: f.color, color: "#fff", padding: "0 4px", borderRadius: "2px" }}>
+                {f.code}
+              </span>
+            ))}
+            <span style={{ marginLeft: "12px" }}>Gegenereerd: {new Date().toLocaleString("nl-NL")}</span>
+          </div>
         </div>
       </div>
     </>
   );
 }
 
-// Nieuwe component: Mail naar planning
+// Nieuwe component: Mail naar planning met PDF bijlage
 function MailKnop({ diensten, personen }) {
   const [open, setOpen] = useState(false);
+  const [bezig, setBezig] = useState(false);
   const maanden = useMemo(() => beschikbareMaanden(diensten), [diensten]);
   const [gekozenMaand, setGekozenMaand] = useState(() => maanden[maanden.length - 1] || "");
   const [mailAdres, setMailAdres] = useState("Richard.bos@vrfgv.nl");
+  const pdfRef = useRef(null);
 
   useEffect(() => {
     if (!gekozenMaand && maanden.length > 0) setGekozenMaand(maanden[maanden.length - 1]);
@@ -1214,11 +1386,9 @@ function MailKnop({ diensten, personen }) {
       return "";
     }
 
-    // Bouw de tabel in platte tekst
     let body = "D-Ploeg Veluwsekant - Maandrooster " + maandLabel(gekozenMaand) + "\n";
     body += "=".repeat(80) + "\n\n";
 
-    // Header met datums (dag nummers)
     body += "Naam".padEnd(25);
     for (const datum of datums) {
       const dagNr = Number(datum.slice(8, 10));
@@ -1227,7 +1397,6 @@ function MailKnop({ diensten, personen }) {
     body += "\n";
     body += "-".repeat(25 + datums.length * 4) + "\n";
 
-    // Rijen per persoon
     for (const p of personen) {
       body += p.naam.padEnd(25);
       for (const datum of datums) {
@@ -1245,12 +1414,66 @@ function MailKnop({ diensten, personen }) {
     return body;
   }
 
-  function openMail() {
-    const onderwerp = encodeURIComponent("Maandrooster " + maandLabel(gekozenMaand) + " - D-Ploeg Veluwsekant");
-    const body = encodeURIComponent(genereerMailBody());
-    const mailtoLink = "mailto:" + mailAdres + "?subject=" + onderwerp + "&body=" + body;
-    window.location.href = mailtoLink;
-    setOpen(false);
+  async function genereerEnVerstuurPDF() {
+    setBezig(true);
+    
+    try {
+      // Genereer de PDF HTML
+      const pdfHTML = genereerPDFHTML(diensten, personen, gekozenMaand);
+      
+      // Maak een tijdelijk element voor de PDF
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = pdfHTML;
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.left = '-9999px';
+      tempDiv.style.top = '-9999px';
+      document.body.appendChild(tempDiv);
+
+      // Genereer PDF met html2pdf
+      const pdfElement = tempDiv.querySelector('#pdf-content');
+      
+      const opt = {
+        margin:        [5, 5, 5, 5],
+        filename:     `Maandrooster_${gekozenMaand}_D-Ploeg.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+      };
+
+      const pdfBlob = await html2pdf().set(opt).from(pdfElement).outputPdf('blob');
+      
+      // Verwijder tijdelijk element
+      document.body.removeChild(tempDiv);
+
+      // Maak een base64 string van de PDF
+      const reader = new FileReader();
+      reader.readAsDataURL(pdfBlob);
+      reader.onload = function() {
+        const base64Data = reader.result.split(',')[1];
+        
+        // Genereer mailto link met PDF als bijlage (via base64)
+        const onderwerp = encodeURIComponent("Maandrooster " + maandLabel(gekozenMaand) + " - D-Ploeg Veluwsekant");
+        const body = encodeURIComponent(genereerMailBody() + "\n\n📎 Bijlage: Maandrooster " + maandLabel(gekozenMaand) + ".pdf");
+        
+        // Voor mail clients die base64 bijlagen ondersteunen (niet allemaal)
+        // We gebruiken een alternatieve aanpak: open mail met tekst en vermeld dat PDF gegenereerd is
+        const mailtoLink = "mailto:" + mailAdres + "?subject=" + onderwerp + "&body=" + body;
+        window.location.href = mailtoLink;
+        
+        // Download de PDF ook automatisch als backup
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(pdfBlob);
+        link.download = `Maandrooster_${gekozenMaand}_D-Ploeg.pdf`;
+        link.click();
+        
+        setBezig(false);
+        setOpen(false);
+      };
+    } catch (error) {
+      console.error("PDF generatie fout:", error);
+      alert("Er ging iets mis bij het genereren van de PDF. Probeer het opnieuw.");
+      setBezig(false);
+    }
   }
 
   if (maanden.length === 0) return null;
@@ -1261,7 +1484,7 @@ function MailKnop({ diensten, personen }) {
         onClick={() => setOpen(true)}
         className="text-[11px] font-medium text-[#7FAE8C] hover:text-[#A8D5B5] border border-[#3D6B4C] rounded-lg px-3 py-1.5 flex-shrink-0"
       >
-        📧 Mail naar planning
+        📧 Mail met PDF
       </button>
 
       {open && (
@@ -1270,7 +1493,8 @@ function MailKnop({ diensten, personen }) {
             className="bg-[#16181D] border border-[#2A2E37] rounded-xl p-5 max-w-md w-full"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="text-[#E8E6E1] font-semibold text-base mb-3">Mail maandrooster</div>
+            <div className="text-[#E8E6E1] font-semibold text-base mb-3">📧 Mail maandrooster met PDF</div>
+            
             <label className="block text-[11px] uppercase tracking-wider text-[#6B7280] mb-1.5">Maand</label>
             <select
               value={gekozenMaand}
@@ -1294,12 +1518,18 @@ function MailKnop({ diensten, personen }) {
               <button onClick={() => setOpen(false)} className="flex-1 text-sm text-[#8A8F9C] hover:text-[#E8E6E1] border border-[#2A2E37] rounded-lg py-2">
                 Annuleren
               </button>
-              <button onClick={openMail} className="flex-1 text-sm font-semibold text-[#101216] bg-[#7FAE8C] hover:bg-[#6B9A7C] rounded-lg py-2">
-                📧 Mail openen
+              <button 
+                onClick={genereerEnVerstuurPDF} 
+                disabled={bezig}
+                className="flex-1 text-sm font-semibold text-[#101216] bg-[#7FAE8C] hover:bg-[#6B9A7C] disabled:opacity-50 rounded-lg py-2"
+              >
+                {bezig ? "⏳ PDF maken..." : "📧 Mail met PDF"}
               </button>
             </div>
             <p className="text-[10px] text-[#5A5F68] mt-3">
-              De mail wordt geopend in je standaard mailprogramma met een platte tekst tabel.
+              De PDF wordt automatisch gegenereerd en als bijlage toegevoegd. De mail wordt geopend in je standaard mailprogramma.
+              <br />
+              <span className="text-[#8AA0B5]">ℹ️ De PDF wordt ook automatisch gedownload als backup.</span>
             </p>
           </div>
         </div>

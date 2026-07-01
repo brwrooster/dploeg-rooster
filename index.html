@@ -331,6 +331,29 @@
       display: block;
     }
   }
+  
+  /* E-mail stijl */
+  .email-table {
+    border-collapse: collapse;
+    width: 100%;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+  }
+  .email-table th,
+  .email-table td {
+    border: 1px solid #333;
+    padding: 4px 6px;
+    text-align: center;
+  }
+  .email-table th {
+    background: #e0e0e0;
+    font-weight: bold;
+  }
+  .email-table .naam-col {
+    text-align: left;
+    font-weight: bold;
+    padding-right: 10px;
+  }
 </style>
 <script>
   window.addEventListener('error', function(e) {
@@ -886,7 +909,6 @@
             </div>
             <div className="flex items-center gap-3 flex-shrink-0">
               <ThemaKnop licht={licht} onClick={wisselThema} compact />
-              <PrintKnop diensten={data.diensten || []} personen={data.personen || []} />
               <button
                 onClick={onGoToLogin}
                 className="text-[11px] font-medium text-[#8A8F9C] hover:text-[#E8E6E1] border border-[#2A2E37] rounded-lg px-3 py-1.5 flex-shrink-0"
@@ -922,6 +944,10 @@
       const [error, setError] = useState("");
       const [bezig, setBezig] = useState(false);
       const { licht, wisselThema } = useThema();
+      const [uploadDatum] = useState(() => {
+        const d = new Date();
+        return d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
+      });
 
       async function handleSubmit(e) {
         e.preventDefault();
@@ -938,8 +964,8 @@
       }
 
       return (
-        <div className="min-h-screen bg-[#101216] flex items-center justify-center p-6">
-          <div className="w-full max-w-sm">
+        <div className="min-h-screen bg-[#101216] flex flex-col items-center justify-center p-6">
+          <div className="w-full max-w-sm flex-1 flex flex-col justify-center">
             <div className="flex items-center gap-3 mb-8 justify-center">
               <div className="w-11 h-11 rounded-lg bg-[#B5483D] flex items-center justify-center flex-shrink-0 overflow-hidden">
                 <img src={LOGO_URL} alt="Logo" className="w-full h-full object-cover" onError={(e) => { e.target
@@ -968,6 +994,18 @@
               </button>
             </form>
             <button onClick={onGuest} className="w-full mt-4 text-[#6B7280] hover:text-[#8A8F9C] text-sm">Bekijk rooster als gast</button>
+          </div>
+          
+          {/* Footer */}
+          <div className="w-full max-w-sm mt-8 pt-4 border-t border-[#2A2E37] text-center">
+            <p className="text-[10px] text-[#5A5F68] leading-relaxed">
+              © 2026 Richard Bos – Webdesign & Development.<br />
+              <a href="mailto:Richard.bos@vrfgv.nl" className="text-[#6B7280] hover:text-[#8A8F9C] transition-colors">
+                Richard.bos@vrfgv.nl
+              </a>
+              <br />
+              <span className="text-[#4A4F58]">Laatste upload: {uploadDatum}</span>
+            </p>
           </div>
         </div>
       );
@@ -1323,7 +1361,7 @@
       );
     }
 
-    // ---------- Print: maandoverzicht (liggend, namen × datums, functiecode per cel) ----------
+    // ---------- Print: maandoverzicht (alleen in beheer) ----------
     function maandLabel(jaarMaand) {
       const [jaar, maand] = jaarMaand.split("-").map(Number);
       const d = new Date(jaar, maand - 1, 1);
@@ -1332,7 +1370,7 @@
 
     function beschikbareMaanden(diensten) {
       const set = new Set();
-      diensten.forEach((d) => set.add(d.datum.slice(0, 7))); // "YYYY-MM"
+      diensten.forEach((d) => set.add(d.datum.slice(0, 7)));
       return [...set].sort();
     }
 
@@ -1384,15 +1422,60 @@
         return "";
       }
 
-      // Genereer platte tekst tabel voor in de e-mail
+      // Genereer HTML tabel voor in de e-mail
+      const genereerHTMLTabel = () => {
+        if (!gekozenMaand || personen.length === 0) return '';
+
+        let html = `
+          <table style="border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 12px;">
+            <thead>
+              <tr>
+                <th style="border: 1px solid #333; padding: 6px 8px; text-align: left; background: #e0e0e0; font-weight: bold;">Naam</th>
+        `;
+
+        dagenInMaand.forEach((datum) => {
+          const dag = Number(datum.slice(8, 10));
+          html += `<th style="border: 1px solid #333; padding: 4px 6px; text-align: center; background: #e0e0e0; font-weight: bold; min-width: 25px;">${dag}</th>`;
+        });
+
+        html += `
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+        personen.forEach((p) => {
+          html += `<tr><td style="border: 1px solid #333; padding: 4px 8px; font-weight: bold;">${p.naam}</td>`;
+          dagenInMaand.forEach((datum) => {
+            const dienst = dienstPerDatum[datum];
+            const code = functieVoor(p.id, dienst);
+            html += `<td style="border: 1px solid #333; padding: 4px 6px; text-align: center;">${code || '·'}</td>`;
+          });
+          html += `</tr>`;
+        });
+
+        html += `
+            </tbody>
+          </table>
+          <p style="font-size: 11px; color: #555; margin-top: 10px;">
+            <strong>Legenda:</strong> B = Bevelvoerder · M = Manschap · CTS = Chauffeur 4133 · CL = Chauffeur 4152 · OL = Opstapper 4152
+          </p>
+          <p style="font-size: 10px; color: #888; margin-top: 5px;">
+            Dit overzicht is gegenereerd op ${new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}
+          </p>
+        `;
+
+        return html;
+      };
+
+      // Genereer platte tekst tabel als fallback
       const genereerTekstTabel = () => {
         if (!gekozenMaand || personen.length === 0) return '';
 
         const maandNaam = maandLabel(gekozenMaand);
         let tekst = `D-Ploeg Veluwsekant — Maandrooster ${maandNaam}\n`;
-        tekst += `${'='.repeat(60)}\n\n`;
+        tekst += `${'='.repeat(70)}\n\n`;
 
-        // Header met datums
         let header = 'Naam'.padEnd(20);
         dagenInMaand.forEach((datum) => {
           const dag = String(Number(datum.slice(8, 10))).padStart(2, ' ');
@@ -1401,7 +1484,6 @@
         tekst += header + '\n';
         tekst += '-'.repeat(header.length) + '\n';
 
-        // Rijen met personen
         personen.forEach((p) => {
           let rij = p.naam.padEnd(20);
           dagenInMaand.forEach((datum) => {
@@ -1412,8 +1494,7 @@
           tekst += rij + '\n';
         });
 
-        // Legenda
-        tekst += '\n' + '-'.repeat(60) + '\n';
+        tekst += '\n' + '-'.repeat(70) + '\n';
         tekst +=
           'Legenda: B = Bevelvoerder · M = Manschap · CTS = Chauffeur 4133 · CL = Chauffeur 4152 · OL = Opstapper 4152\n';
         tekst += `\nDit overzicht is gegenereerd op ${new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}`;
@@ -1425,23 +1506,55 @@
         const maandNaam = gekozenMaand ? maandLabel(gekozenMaand) : '';
         const onderwerp = `Maandrooster ${maandNaam}`;
 
-        // Genereer de teksttabel
-        const tabelTekst = genereerTekstTabel();
+        // Genereer de HTML tabel voor de e-mail
+        const htmlTabel = genereerHTMLTabel();
 
-        // Bouw de mailtekst
-        const mailTekst =
+        // Bouw de volledige HTML e-mail
+        const htmlEmail = `
+          <html>
+            <head>
+              <meta charset="UTF-8">
+              <style>
+                body { font-family: Arial, sans-serif; color: #222; }
+                .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+                .header { font-size: 16px; font-weight: bold; margin-bottom: 10px; }
+                .message { margin: 15px 0; }
+                .footer { margin-top: 20px; font-size: 12px; color: #666; }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <div class="header">D-Ploeg Veluwsekant — Maandrooster ${maandNaam}</div>
+                <div class="message">
+                  <p>Beste planners,</p>
+                  <p>Hierbij het aangepaste maandrooster.</p>
+                  <p>Graag 1 op 1 overnemen in InPlanning.</p>
+                </div>
+                ${htmlTabel}
+                <div class="footer">
+                  Met vriendelijke groet,<br>
+                  D-Ploeg Veluwsekant
+                </div>
+              </div>
+            </body>
+          </html>
+        `;
+
+        // Platte tekst versie als fallback
+        const tekstTabel = genereerTekstTabel();
+        const tekstMail = 
           'Beste planners,\n\n' +
           'Hierbij het aangepaste maandrooster.\n' +
           'Graag 1 op 1 overnemen in InPlanning.\n\n' +
-          '='.repeat(60) + '\n\n' +
-          tabelTekst + '\n\n' +
-          '='.repeat(60) + '\n\n' +
+          '='.repeat(70) + '\n\n' +
+          tekstTabel + '\n\n' +
+          '='.repeat(70) + '\n\n' +
           'Met vriendelijke groet,\n' +
           'D-Ploeg Veluwsekant';
 
-        // URL encode de tekst
+        // URL encode
         const subject = encodeURIComponent(onderwerp);
-        const body = encodeURIComponent(mailTekst);
+        const body = encodeURIComponent(tekstMail);
 
         // Open mail app
         window.location.href = `mailto:?subject=${subject}&body=${body}`;
@@ -1522,7 +1635,7 @@
                   </button>
                 </div>
                 <p className="text-[10px] text-[#5A5F68] mt-3">
-                  Bij 'Verstuur per mail' wordt de tabel als platte tekst in de e-mail gezet.
+                  Bij 'Verstuur per mail' wordt de tabel overzichtelijk in de e-mail gezet.
                 </p>
                 <p className="text-[10px] text-[#5A5F68]">
                   Kies bij 'Printen' de liggende stand (landscape) voor het beste resultaat.

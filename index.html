@@ -181,18 +181,26 @@
   .functie-ol { background: #7A6B9C; color: #fff; font-weight: bold; }
   .functie-leeg { background: #f9f9f9; color: #ccc; }
 
-  /* Status badge voor gemailde maanden */
+  /* Gemaild badge styling */
   .gemaild-badge {
     background: #1F3A2E;
     color: #A8D5B5;
     border: 1px solid #3D6B4C;
-    padding: 2px 10px;
+    padding: 2px 12px;
     border-radius: 12px;
     font-size: 11px;
     font-weight: 500;
     display: inline-flex;
     align-items: center;
     gap: 4px;
+  }
+  .gemaild-badge::before {
+    content: "✅";
+    font-size: 12px;
+  }
+  .gemaild-maand {
+    border-left: 3px solid #3D6B4C !important;
+    background-color: rgba(61, 107, 76, 0.08) !important;
   }
 </style>
 <script>
@@ -946,6 +954,16 @@ function DienstenTab({ api, refreshKey, bumpRefresh }) {
   const [periodeInterval, setPeriodeInterval] = useState(4);
   const weerPerDatum = useWeerAlmere();
 
+  // Gemailde maanden status
+  const [gemaildeMaanden, setGemaildeMaanden] = useState(() => {
+    try {
+      const data = localStorage.getItem("rooster_gemailde_maanden");
+      return data ? JSON.parse(data) : {};
+    } catch {
+      return {};
+    }
+  });
+
   useEffect(() => {
     setLaden(true);
     Promise.all([api.call("/api/diensten"), api.call("/api/personen")])
@@ -967,6 +985,20 @@ function DienstenTab({ api, refreshKey, bumpRefresh }) {
     personen.forEach((p) => (m[p.id] = p));
     return m;
   }, [personen]);
+
+  // Functie om een maand als gemaild te markeren
+  function markeerAlsGemaild(maand) {
+    const nieuweStatus = {
+      ...gemaildeMaanden,
+      [maand]: {
+        datum: new Date().toISOString(),
+        tijd: new Date().toLocaleString("nl-NL")
+      }
+    };
+    setGemaildeMaanden(nieuweStatus);
+    localStorage.setItem("rooster_gemailde_maanden", JSON.stringify(nieuweStatus));
+    bumpRefresh();
+  }
 
   async function addDienst() {
     if (!nieuweDatum) return;
@@ -1050,6 +1082,17 @@ function DienstenTab({ api, refreshKey, bumpRefresh }) {
 
   if (laden) return <div className="text-[#6B7280] text-sm">Laden...</div>;
 
+  // Groepeer diensten per maand voor de gemaild status
+  const dienstenPerMaand = useMemo(() => {
+    const map = {};
+    diensten.forEach(d => {
+      const maand = d.datum.slice(0, 7);
+      if (!map[maand]) map[maand] = [];
+      map[maand].push(d);
+    });
+    return map;
+  }, [diensten]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -1058,10 +1101,8 @@ function DienstenTab({ api, refreshKey, bumpRefresh }) {
           <MailKnop 
             diensten={diensten} 
             personen={personen} 
-            onGemaild={(maand) => {
-              // Refresh de lijst na het markeren
-              bumpRefresh();
-            }}
+            onGemaild={markeerAlsGemaild}
+            gemaildeMaanden={gemaildeMaanden}
           />
           <PrintKnop diensten={diensten} personen={personen} />
           {diensten.length > 0 && (
@@ -1105,23 +1146,46 @@ function DienstenTab({ api, refreshKey, bumpRefresh }) {
       {diensten.length === 0 ? (
         <EmptyState title="Nog geen diensten" body="Voeg een datum toe, of maak een hele periode in 1x aan." />
       ) : (
-        <div className="space-y-3">
-          {diensten.map((d) => (
-            <div key={d.id}>
-              <div className="flex items-center justify-between mb-1.5 px-1">
-                <button onClick={() => setEditId(editId === d.id ? null : d.id)} className="text-[11px] uppercase tracking-wider text-[#6B7280] hover:text-[#8A8F9C]">
-                  {editId === d.id ? "Klaar met wijzigen" : "Beschikbaar: " + (d.beschikbaar || []).length + "/" + personen.length}
-                </button>
-                <button onClick={() => removeDienst(d.id)} className="text-[#5A5F68] hover:text-[#E08A7A] text-xs">verwijder</button>
-              </div>
-              <DienstKaart dienst={d} personMap={personMap} beschikbaarMode={editId === d.id} onToggleBeschikbaar={toggleBeschikbaar} onSetAlle={setAlle} weerPerDatum={weerPerDatum} onWijzigToewijzing={wijzigToewijzing} />
-              {editId !== d.id && (
-                <div className="flex justify-end mt-1.5">
-                  <button onClick={() => indelenEen(d.id)} disabled={(d.beschikbaar || []).length === 0} className="text-[11px] font-medium text-[#C9A24B] hover:text-[#DDB35E] disabled:opacity-30">Opnieuw indelen</button>
+        <div className="space-y-4">
+          {/* Toon per maand met gemaild status */}
+          {Object.keys(dienstenPerMaand).sort().map(maand => {
+            const isGemaild = !!gemaildeMaanden[maand];
+            const gemaildInfo = gemaildeMaanden[maand];
+            const maandDiensten = dienstenPerMaand[maand];
+            
+            return (
+              <div key={maand} className={isGemaild ? "gemaild-maand rounded-xl" : ""}>
+                <div className="flex items-center justify-between px-1 mb-2">
+                  <span className="text-[13px] font-semibold text-[#E8E6E1] capitalize">
+                    {maandLabel(maand)}
+                  </span>
+                  {isGemaild && (
+                    <span className="gemaild-badge">
+                      Gemaild op {gemaildInfo.tijd}
+                    </span>
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
+                <div className="space-y-3">
+                  {maandDiensten.map((d) => (
+                    <div key={d.id}>
+                      <div className="flex items-center justify-between mb-1.5 px-1">
+                        <button onClick={() => setEditId(editId === d.id ? null : d.id)} className="text-[11px] uppercase tracking-wider text-[#6B7280] hover:text-[#8A8F9C]">
+                          {editId === d.id ? "Klaar met wijzigen" : "Beschikbaar: " + (d.beschikbaar || []).length + "/" + personen.length}
+                        </button>
+                        <button onClick={() => removeDienst(d.id)} className="text-[#5A5F68] hover:text-[#E08A7A] text-xs">verwijder</button>
+                      </div>
+                      <DienstKaart dienst={d} personMap={personMap} beschikbaarMode={editId === d.id} onToggleBeschikbaar={toggleBeschikbaar} onSetAlle={setAlle} weerPerDatum={weerPerDatum} onWijzigToewijzing={wijzigToewijzing} />
+                      {editId !== d.id && (
+                        <div className="flex justify-end mt-1.5">
+                          <button onClick={() => indelenEen(d.id)} disabled={(d.beschikbaar || []).length === 0} className="text-[11px] font-medium text-[#C9A24B] hover:text-[#DDB35E] disabled:opacity-30">Opnieuw indelen</button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -1361,38 +1425,8 @@ function PrintKnop({ diensten, personen }) {
   );
 }
 
-// ===== Gemailde maanden functies =====
-function getGemaildeMaanden() {
-  try {
-    const data = localStorage.getItem(GEMAILD_OPSLAG_KEY);
-    return data ? JSON.parse(data) : {};
-  } catch {
-    return {};
-  }
-}
-
-function setGemaildeMaand(maand) {
-  const huidige = getGemaildeMaanden();
-  huidige[maand] = {
-    datum: new Date().toISOString(),
-    tijd: new Date().toLocaleString("nl-NL")
-  };
-  localStorage.setItem(GEMAILD_OPSLAG_KEY, JSON.stringify(huidige));
-  return huidige;
-}
-
-function isMaandGemaild(maand) {
-  const data = getGemaildeMaanden();
-  return !!data[maand];
-}
-
-function getGemaildInfo(maand) {
-  const data = getGemaildeMaanden();
-  return data[maand] || null;
-}
-
-// ===== MailKnop met standaard adressen en status =====
-function MailKnop({ diensten, personen, onGemaild }) {
+// ===== MailKnop - gebruikt Share API voor zowel iPhone als desktop =====
+function MailKnop({ diensten, personen, onGemaild, gemaildeMaanden }) {
   const [open, setOpen] = useState(false);
   const [bezig, setBezig] = useState(false);
   const maanden = useMemo(() => beschikbareMaanden(diensten), [diensten]);
@@ -1400,21 +1434,15 @@ function MailKnop({ diensten, personen, onGemaild }) {
   
   // Standaard mailadressen
   const [mailAdres, setMailAdres] = useState("Richard.bos@vrfgv.nl, Maurice.raven@vrfgv.nl, planning@vrfgv.nl");
-  const [gemaildInfo, setGemaildInfo] = useState(null);
 
   useEffect(() => {
     if (!gekozenMaand && maanden.length > 0) setGekozenMaand(maanden[maanden.length - 1]);
-    if (gekozenMaand) {
-      setGemaildInfo(getGemaildInfo(gekozenMaand));
-    }
   }, [gekozenMaand, maanden]);
 
-  // Alleen de gewenste tekst, geen platte tabel meer
+  // Alleen de gewenste tekst
   function genereerMailBody() {
     if (!gekozenMaand) return "";
-    
     const maandNaam = maandLabel(gekozenMaand);
-    
     return `Beste planners,
 
 Hierbij ons aangepast rooster voor ${maandNaam}.
@@ -1457,9 +1485,8 @@ Alvast bedankt!`;
       // Maak een bestand van de PDF
       const pdfFile = new File([pdfBlob], `Maandrooster_${gekozenMaand}_D-Ploeg.pdf`, { type: 'application/pdf' });
 
-      // Check of de browser de Share API ondersteunt (iPhone)
+      // Gebruik ALTIJD de Share API als die beschikbaar is (zowel iPhone als desktop)
       if (navigator.share) {
-        // iOS Share Sheet - werkt perfect op iPhone
         try {
           await navigator.share({
             title: `Maandrooster ${maandLabel(gekozenMaand)} - D-Ploeg`,
@@ -1467,42 +1494,33 @@ Alvast bedankt!`;
             files: [pdfFile]
           });
           
-          // Markeer als gemaild
-          setGemaildeMaand(gekozenMaand);
-          setGemaildInfo(getGemaildInfo(gekozenMaand));
-          if (onGemaild) onGemaild(gekozenMaand);
+          // Markeer als gemaild (definitief)
+          if (onGemaild) {
+            onGemaild(gekozenMaand);
+          }
           
           setBezig(false);
           setOpen(false);
           return;
         } catch (shareError) {
-          // Gebruiker heeft gecancelled of share is mislukt
+          // Gebruiker heeft gecancelled
           if (shareError.name !== 'AbortError') {
             console.error('Share error:', shareError);
+            alert("Er ging iets mis bij het delen. Probeer het opnieuw.");
           }
           setBezig(false);
           return;
         }
       }
 
-      // Fallback voor desktop: mailto + download
-      const onderwerp = encodeURIComponent(`Maandrooster ${maandLabel(gekozenMaand)} - D-Ploeg Veluwsekant`);
-      const body = encodeURIComponent(genereerMailBody());
-      
-      // Open mail met alleen de tekst
-      const mailtoLink = `mailto:${mailAdres}?subject=${onderwerp}&body=${body}`;
-      window.location.href = mailtoLink;
-      
-      // Markeer als gemaild (ook bij desktop fallback)
-      setGemaildeMaand(gekozenMaand);
-      setGemaildInfo(getGemaildInfo(gekozenMaand));
-      if (onGemaild) onGemaild(gekozenMaand);
-      
-      // Download PDF als backup
+      // Fallback voor oude browsers: download PDF alleen
+      // Geen mailto meer met platte tekst!
       const link = document.createElement('a');
       link.href = URL.createObjectURL(pdfBlob);
       link.download = `Maandrooster_${gekozenMaand}_D-Ploeg.pdf`;
       link.click();
+      
+      alert("PDF is gedownload. Je kunt deze handmatig mailen naar:\n" + mailAdres);
       
       setBezig(false);
       setOpen(false);
@@ -1516,7 +1534,7 @@ Alvast bedankt!`;
 
   if (maanden.length === 0) return null;
 
-  const isGemaild = gemaildInfo !== null;
+  const isGemaild = gemaildeMaanden && gemaildeMaanden[gekozenMaand];
 
   return (
     <>
@@ -1546,7 +1564,7 @@ Alvast bedankt!`;
               ))}
             </select>
 
-            <label className="block text-[11px] uppercase tracking-wider text-[#6B7280] mb-1.5">Aan:</label>
+            <label className="block text-[11px] uppercase tracking-wider text-[#6B7280] mb-1.5">Aan (alleen ter info):</label>
             <input
               type="text"
               value={mailAdres}
@@ -1556,7 +1574,7 @@ Alvast bedankt!`;
 
             {isGemaild && (
               <div className="bg-[#1F3A2E] border border-[#3D6B4C] rounded-lg p-2 mb-3 flex items-center gap-2">
-                <span className="text-[#A8D5B5] text-sm">✅ Gemaild op {gemaildInfo.tijd}</span>
+                <span className="text-[#A8D5B5] text-sm">✅ Gemaild op {gemaildeMaanden[gekozenMaand].tijd}</span>
               </div>
             )}
 
@@ -1585,11 +1603,9 @@ Alvast bedankt!`;
               </button>
             </div>
             <p className="text-[10px] text-[#5A5F68] mt-3">
-              De PDF wordt automatisch gegenereerd en als bijlage toegevoegd.
+              <span className="text-[#8AA0B5]">ℹ️ De PDF wordt gedeeld via de Share functie van je browser.</span>
               <br />
-              <span className="text-[#8AA0B5]">ℹ️ Op iPhone wordt de Share Sheet geopend. Op desktop wordt de mail geopend.</span>
-              <br />
-              <span className="text-[#7FAE8C]">✅ Na verzenden wordt de maand gemarkeerd als "gemaild".</span>
+              <span className="text-[#7FAE8C]">✅ Na verzenden wordt de maand definitief gemarkeerd als "gemaild".</span>
             </p>
           </div>
         </div>

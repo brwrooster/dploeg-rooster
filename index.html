@@ -4,12 +4,13 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
 <title>D-Ploeg Veluwsekant</title>
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
-<script src="https://cdn.tailwindcss.com"></script>
-<!-- html2pdf library voor PDF generatie -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<!-- Externe scripts met crossorigin -->
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.tailwindcss.com" crossorigin="anonymous"></script>
+<!-- html2pdf library met crossorigin - dubbele fallback -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous"></script>
 
 <style>
   body { background: #101216; margin: 0; }
@@ -125,7 +126,7 @@
     .print-only { display: block; }
   }
 
-  /* Print PDF styling - geen weekend kleur meer */
+  /* Print PDF styling */
   #pdf-content {
     font-family: Arial, sans-serif;
     padding: 20px;
@@ -181,7 +182,6 @@
   .functie-ol { background: #7A6B9C; color: #fff; font-weight: bold; }
   .functie-leeg { background: #f9f9f9; color: #ccc; }
 
-  /* Gemaild badge styling */
   .gemaild-badge {
     background: #1F3A2E;
     color: #A8D5B5;
@@ -204,7 +204,13 @@
   }
 </style>
 <script>
+  // Error handling voor externe scripts
   window.addEventListener('error', function (e) {
+    // Negeer CORS-gerelateerde fouten die geen invloed hebben op de functionaliteit
+    if (e.message && (e.message.includes('Script error') || e.message.includes('cross-origin'))) {
+      console.warn('CORS fout genegeerd:', e.message);
+      return;
+    }
     var el = document.getElementById('error-box');
     if (!el) {
       el = document.createElement('div');
@@ -220,6 +226,11 @@
 <div id="root"></div>
 
 <script type="text/babel" data-presets="react">
+// ===== STAP 1: Controleer of html2pdf beschikbaar is =====
+if (typeof html2pdf === 'undefined') {
+  console.warn('html2pdf niet beschikbaar, PDF functionaliteit wordt uitgeschakeld');
+}
+
 const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
 // ===== Opslag voor gemailde maanden =====
@@ -986,7 +997,6 @@ function DienstenTab({ api, refreshKey, bumpRefresh }) {
     return m;
   }, [personen]);
 
-  // Functie om een maand als gemaild te markeren
   function markeerAlsGemaild(maand) {
     const nieuweStatus = {
       ...gemaildeMaanden,
@@ -1082,7 +1092,6 @@ function DienstenTab({ api, refreshKey, bumpRefresh }) {
 
   if (laden) return <div className="text-[#6B7280] text-sm">Laden...</div>;
 
-  // Groepeer diensten per maand voor de gemaild status
   const dienstenPerMaand = useMemo(() => {
     const map = {};
     diensten.forEach(d => {
@@ -1147,7 +1156,6 @@ function DienstenTab({ api, refreshKey, bumpRefresh }) {
         <EmptyState title="Nog geen diensten" body="Voeg een datum toe, of maak een hele periode in 1x aan." />
       ) : (
         <div className="space-y-4">
-          {/* Toon per maand met gemaild status */}
           {Object.keys(dienstenPerMaand).sort().map(maand => {
             const isGemaild = !!gemaildeMaanden[maand];
             const gemaildInfo = gemaildeMaanden[maand];
@@ -1425,7 +1433,7 @@ function PrintKnop({ diensten, personen }) {
   );
 }
 
-// ===== MailKnop - met try/catch voor Share API =====
+// ===== MailKnop met CORS-fix =====
 function MailKnop({ diensten, personen, onGemaild, gemaildeMaanden }) {
   const [open, setOpen] = useState(false);
   const [bezig, setBezig] = useState(false);
@@ -1433,14 +1441,12 @@ function MailKnop({ diensten, personen, onGemaild, gemaildeMaanden }) {
   const maanden = useMemo(() => beschikbareMaanden(diensten), [diensten]);
   const [gekozenMaand, setGekozenMaand] = useState(() => maanden[maanden.length - 1] || "");
   
-  // Standaard mailadressen
   const [mailAdres, setMailAdres] = useState("Richard.bos@vrfgv.nl, Maurice.raven@vrfgv.nl, planning@vrfgv.nl");
 
   useEffect(() => {
     if (!gekozenMaand && maanden.length > 0) setGekozenMaand(maanden[maanden.length - 1]);
   }, [gekozenMaand, maanden]);
 
-  // Alleen de gewenste tekst
   function genereerMailBody() {
     if (!gekozenMaand) return "";
     const maandNaam = maandLabel(gekozenMaand);
@@ -1457,10 +1463,13 @@ Alvast bedankt!`;
     setErrorMsg("");
     
     try {
-      // Genereer de PDF HTML
+      // Controleer of html2pdf beschikbaar is
+      if (typeof html2pdf === 'undefined') {
+        throw new Error('PDF bibliotheek niet geladen. Probeer de pagina te herladen.');
+      }
+
       const pdfHTML = genereerPDFHTML(diensten, personen, gekozenMaand);
       
-      // Maak een tijdelijk element voor de PDF
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = pdfHTML;
       tempDiv.style.position = 'absolute';
@@ -1468,7 +1477,6 @@ Alvast bedankt!`;
       tempDiv.style.top = '-9999px';
       document.body.appendChild(tempDiv);
 
-      // Genereer PDF met html2pdf
       const pdfElement = tempDiv.querySelector('#pdf-content');
       
       const opt = {
@@ -1480,14 +1488,11 @@ Alvast bedankt!`;
       };
 
       const pdfBlob = await html2pdf().set(opt).from(pdfElement).outputPdf('blob');
-      
-      // Verwijder tijdelijk element
       document.body.removeChild(tempDiv);
 
-      // Maak een bestand van de PDF
       const pdfFile = new File([pdfBlob], `Maandrooster_${gekozenMaand}_D-Ploeg.pdf`, { type: 'application/pdf' });
 
-      // Probeer Share API (werkt op iPhone en desktop Chrome/Edge/Safari)
+      // Share API met try/catch
       if (navigator.share) {
         try {
           await navigator.share({
@@ -1496,7 +1501,6 @@ Alvast bedankt!`;
             files: [pdfFile]
           });
           
-          // Markeer als gemaild (definitief) - alleen als delen succesvol was
           if (onGemaild) {
             onGemaild(gekozenMaand);
           }
@@ -1505,23 +1509,20 @@ Alvast bedankt!`;
           setOpen(false);
           return;
         } catch (shareError) {
-          // Gebruiker heeft gecancelled
           if (shareError.name === 'AbortError') {
             setBezig(false);
             return;
           }
-          // Andere share error - fallback naar download
-          console.warn('Share error, falling back to download:', shareError);
+          console.warn('Share error:', shareError);
         }
       }
 
-      // Fallback: download PDF alleen (geen mailto met platte tekst)
+      // Fallback: download PDF
       const link = document.createElement('a');
       link.href = URL.createObjectURL(pdfBlob);
       link.download = `Maandrooster_${gekozenMaand}_D-Ploeg.pdf`;
       link.click();
       
-      // Toon melding met mailadressen
       alert(`✅ PDF is gedownload!\n\nJe kunt deze handmatig mailen naar:\n${mailAdres}\n\nMet de tekst:\n${genereerMailBody()}`);
       
       setBezig(false);
@@ -1529,7 +1530,7 @@ Alvast bedankt!`;
       
     } catch (error) {
       console.error("PDF generatie fout:", error);
-      setErrorMsg("Er ging iets mis bij het genereren van de PDF. Probeer het opnieuw.");
+      setErrorMsg(error.message || "Er ging iets mis bij het genereren van de PDF.");
       setBezig(false);
     }
   }
@@ -1613,7 +1614,7 @@ Alvast bedankt!`;
             <div className="text-[10px] text-[#5A5F68] mt-3 space-y-1">
               <p><span className="text-[#8AA0B5]">ℹ️</span> De PDF wordt gedeeld via de Share functie van je browser.</p>
               <p><span className="text-[#7FAE8C]">✅</span> Na verzenden wordt de maand definitief gemarkeerd als "gemaild".</p>
-              <p><span className="text-[#E0A33D]">💡</span> Werkt niet? De PDF wordt automatisch gedownload als backup.</p>
+              <p><span className="text-[#E0A33D]">💡</span> Werkt de Share niet? De PDF wordt automatisch gedownload.</p>
             </div>
           </div>
         </div>

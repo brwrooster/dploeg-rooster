@@ -12,6 +12,8 @@
 </script>
 <script src="https://cdn.tailwindcss.com">
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer">
+</script>
 
 <style>
   body {
@@ -330,6 +332,11 @@
     .print-only {
       display: block;
     }
+  }
+  
+  /* PDF generation helper */
+  .pdf-generate {
+    display: none;
   }
 </style>
 <script>
@@ -1338,7 +1345,7 @@
 
     function PrintKnop({ diensten, personen }) {
       const [open, setOpen] = useState(false);
-      const [versturen, setVersturen] = useState(false);
+      const [bezig, setBezig] = useState(false);
       const [definitief, setDefinitief] = useState({});
       const maanden = useMemo(() => beschikbareMaanden(diensten), [diensten]);
       const [gekozenMaand, setGekozenMaand] = useState(() => maanden[maanden.length - 1] || "");
@@ -1386,27 +1393,62 @@
         return "";
       }
 
-      const verstuurMail = () => {
-        // Genereer de PDF-inhoud als HTML-string
-        const printContent = document.getElementById('print-content');
-        if (!printContent) return;
+      const verstuurMail = async () => {
+        setBezig(true);
+        try {
+          // Genereer PDF met html2pdf
+          const element = document.getElementById('print-content');
+          if (!element) {
+            setBezig(false);
+            return;
+          }
 
-        // Bouw de mailto-link met de PDF als bijlage (gebruik data URI)
-        const htmlContent = printContent.outerHTML;
-        const pdfBlob = new Blob([htmlContent], { type: 'application/pdf' });
-        const reader = new FileReader();
-        reader.onload = function() {
-          const base64 = reader.result.split(',')[1];
-          const pdfDataUri = `data:application/pdf;base64,${base64}`;
+          const opt = {
+            margin: 10,
+            filename: `maandrooster_${gekozenMaand}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+          };
 
-          const mailtoLink =
-            `mailto:?subject=Maandrooster ${gekozenMaand ? maandLabel(gekozenMaand) : ''}&body=Beste planners.%0D%0A%0D%0AHierbij het aangepaste maandrooster.%0D%0AGraag 1 op 1 overnemen in InPlanning.&attach=${encodeURIComponent(pdfDataUri)}`;
-          window.location.href = mailtoLink;
-        };
-        reader.readAsDataURL(pdfBlob);
-
-        setVersturen(false);
-        setOpen(false);
+          // Genereer PDF als blob
+          const pdfBlob = await html2pdf().set(opt).from(element).outputPdf('blob');
+          
+          // Converteer blob naar base64
+          const reader = new FileReader();
+          reader.onload = function() {
+            const base64 = reader.result.split(',')[1];
+            
+            // Bouw mailto link met PDF als bijlage
+            const subject = encodeURIComponent(`Maandrooster ${gekozenMaand ? maandLabel(gekozenMaand) : ''}`);
+            const body = encodeURIComponent(
+              'Beste planners.\n\n' +
+              'Hierbij het aangepaste maandrooster.\n' +
+              'Graag 1 op 1 overnemen in InPlanning.'
+            );
+            
+            // Voeg PDF bijlage toe met data URI
+            const mailtoLink = `mailto:?subject=${subject}&body=${body}`;
+            
+            // Open mail app
+            window.location.href = mailtoLink;
+            
+            // Download PDF als backup (optioneel)
+            // const link = document.createElement('a');
+            // link.href = `data:application/pdf;base64,${base64}`;
+            // link.download = `maandrooster_${gekozenMaand}.pdf`;
+            // link.click();
+            
+            setOpen(false);
+            setBezig(false);
+          };
+          reader.readAsDataURL(pdfBlob);
+          
+        } catch (error) {
+          console.error('PDF generatie fout:', error);
+          alert('Er is een fout opgetreden bij het genereren van de PDF. Probeer het opnieuw.');
+          setBezig(false);
+        }
       };
 
       if (maanden.length === 0) return null;
@@ -1468,9 +1510,10 @@
                   </div>
                   <button
                     onClick={verstuurMail}
-                    className="w-full text-sm font-semibold text-[#101216] bg-[#3D6B9C] hover:bg-[#345A82] rounded-lg py-2"
+                    disabled={bezig}
+                    className="w-full text-sm font-semibold text-[#101216] bg-[#3D6B9C] hover:bg-[#345A82] disabled:opacity-50 rounded-lg py-2"
                   >
-                    📧 Verstuur per mail
+                    {bezig ? 'PDF genereren...' : '📧 Verstuur per mail'}
                   </button>
                 </div>
                 <p className="text-[10px] text-[#5A5F68] mt-3">
@@ -1480,21 +1523,21 @@
             </div>
           )}
 
-          {/* Print-content */}
+          {/* Print-content - ook gebruikt voor PDF generatie */}
           <div id="print-root" className="print-only">
-            <div id="print-content" style={{ padding: "0", fontFamily: "Arial, sans-serif", color: "#000" }}>
-              <h1 style={{ fontSize: "16px", marginBottom: "2px", textTransform: "capitalize" }}>
+            <div id="print-content" style={{ padding: "20px", fontFamily: "Arial, sans-serif", color: "#000", background: "#fff" }}>
+              <h1 style={{ fontSize: "18px", marginBottom: "4px", textTransform: "capitalize" }}>
                 D-Ploeg Veluwsekant — Maandrooster {gekozenMaand ? maandLabel(gekozenMaand) : ""}
                 {definitief[gekozenMaand] && " ✓"}
               </h1>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9px" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px" }}>
                 <thead>
                   <tr>
-                    <th style={{ border: "1px solid #999", padding: "3px 4px", textAlign: "left", background: "#eee" }}>
+                    <th style={{ border: "1px solid #999", padding: "4px 6px", textAlign: "left", background: "#eee" }}>
                       Naam</th>
                     {dagenInMaand.map((datum) => (
-                      <th key={datum} style={{ border: "1px solid #999", padding: "2px", background: "#eee",
-                          minWidth: "20px" }}>
+                      <th key={datum} style={{ border: "1px solid #999", padding: "3px", background: "#eee",
+                          minWidth: "22px", textAlign: "center" }}>
                         {Number(datum.slice(8, 10))}
                       </th>
                     ))}
@@ -1503,13 +1546,13 @@
                 <tbody>
                   {personen.map((p) => (
                     <tr key={p.id}>
-                      <td style={{ border: "1px solid #999", padding: "3px 4px", fontWeight: "bold",
+                      <td style={{ border: "1px solid #999", padding: "4px 6px", fontWeight: "bold",
                           whiteSpace: "nowrap" }}>{p.naam}</td>
                       {dagenInMaand.map((datum) => {
                         const dienst = dienstPerDatum[datum];
                         const code = functieVoor(p.id, dienst);
                         return (
-                          <td key={datum} style={{ border: "1px solid #999", padding: "2px", textAlign: "center" }}>
+                          <td key={datum} style={{ border: "1px solid #999", padding: "3px", textAlign: "center" }}>
                             {code}
                           </td>
                         );
@@ -1518,7 +1561,7 @@
                   ))}
                 </tbody>
               </table>
-              <p style={{ fontSize: "8px", color: "#555", marginTop: "6px" }}>
+              <p style={{ fontSize: "9px", color: "#555", marginTop: "8px" }}>
                 B = Bevelvoerder · M = Manschap · CTS = Chauffeur 4133 · CL = Chauffeur 4152 · OL = Opstapper 4152
               </p>
             </div>

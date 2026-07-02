@@ -1,4 +1,4 @@
-// Cloudflare Worker — D-Ploeg Rooster API
+// Cloudflare Worker — D-Ploeg Rooster API (MULTI-TEAM)
 // Bindings nodig (zie wrangler.toml): DB (D1 database)
 
 const FUNCTIE_ORDER = ["B", "M", "CTS", "CL", "OL"];
@@ -11,7 +11,7 @@ function json(data, status = 200) {
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Team",
       "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
     },
   });
@@ -26,11 +26,11 @@ async function sha256(text) {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-async function getAdminFromToken(db, token) {
+async function getAdminFromToken(db, token, team) {
   if (!token) return null;
   const row = await db
-    .prepare("SELECT s.admin_id, s.expires_at FROM sessions s WHERE s.token = ?")
-    .bind(token)
+    .prepare("SELECT s.admin_id, s.expires_at FROM sessions s WHERE s.token = ? AND s.team_id = ?")
+    .bind(token, team)
     .first();
   if (!row) return null;
   if (new Date(row.expires_at) < new Date()) return null;
@@ -41,7 +41,8 @@ function requireAuth(handler) {
   return async (req, env, ctx) => {
     const authHeader = req.headers.get("Authorization") || "";
     const token = authHeader.replace("Bearer ", "").trim();
-    const adminId = await getAdminFromToken(env.DB, token);
+    const team = ctx.team;
+    const adminId = await getAdminFromToken(env.DB, token, team);
     if (!adminId) return json({ error: "Niet ingelogd of sessie verlopen." }, 401);
     ctx.adminId = adminId;
     return handler(req, env, ctx);
@@ -50,16 +51,14 @@ function requireAuth(handler) {
 
 // ---------- Assignment engine (server-side, mirrors the React prototype logic) ----------
 
-async function buildCounts(db) {
-  const personen = await db.prepare("SELECT id FROM personen").all();
+async function buildCounts(db, team) {
+  const personen = await db.prepare("SELECT id FROM personen WHERE team_id = ?").bind(team).all();
   const counts = {};
   personen.results.forEach((p) => {
     counts[p.id] = { total: 0 };
     FUNCTIE_ORDER.forEach((f) => (counts[p.id][f] = 0));
   });
-  // Handmatige correcties tellen niet mee — alleen automatisch ingedeelde
-  // toewijzingen bepalen de eerlijke-verdelingsteller.
-  const rows = await db.prepare("SELECT persoon_id, functie_code FROM toewijzingen WHERE handmatig = 0").all();
+  const rows = await db.prepare("SELECT persoon_id, functie_code FROM toewijzingen WHERE handmatig = 0 AND team_id = ?").bind(team).all();
   rows.results.forEach((r) => {
     if (!counts[r.persoon_id]) return;
     counts[r.persoon_id][r.functie_code] = (counts[r.persoon_id][r.functie_code] || 0) + 1;
@@ -68,9 +67,9 @@ async function buildCounts(db) {
   return counts;
 }
 
-async function getPersonenMetFuncties(db) {
-  const personen = await db.prepare("SELECT id, naam FROM personen ORDER BY volgorde, naam").all();
-  const functieRows = await db.prepare("SELECT persoon_id, functie_code, prioriteit FROM persoon_functies").all();
+async function getPersonenMetFuncties(db, team) {
+  const personen = await db.prepare("SELECT id, naam FROM personen WHERE team_id = ? ORDER BY volgorde, naam").bind(team).all();
+  const functieRows = await db.prepare("SELECT persoon_id, functie_code, prioriteit FROM persoon_functies WHERE team_id = ?").bind(team).all();
   const byPersoon = {};
   functieRows.results.forEach((r) => {
     if (!byPersoon[r.persoon_id]) byPersoon[r.persoon_id] = [];
@@ -92,9 +91,8 @@ function magFunctie(persoon, code) {
   return persoon.functies.some((f) => f.code === code);
 }
 
-// Schaarste-eerst toewijzing met vast/reserve-voorrang binnen elke functie.
 function assignDienst(beschikbarePersonen, counts) {
-  const toewijzing = {}; // functieCode -> [personId]
+  const toewijzing = {};
   FUNCTIE_ORDER.forEach((f) => (toewijzing[f] = []));
   const reedsIngedeeld = new Set();
   const tekorten = [];
@@ -155,12 +153,13 @@ function assignDienst(beschikbarePersonen, counts) {
 
 // ---------- Route handlers ----------
 
-async function handleLogin(req, env) {
+async function handleLogin(req, env, ctx) {
+  const team = ctx.team;
   const { gebruikersnaam, wachtwoord } = await req.json();
   if (!gebruikersnaam || !wachtwoord) return json({ error: "Gebruikersnaam en wachtwoord verplicht." }, 400);
 
-  const admin = await env.DB.prepare("SELECT id, wachtwoord_hash FROM admins WHERE gebruikersnaam = ?")
-    .bind(gebruikersnaam)
+  const admin = await env.DB.prepare("SELECT id, wachtwoord_hash FROM admins WHERE gebruikersnaam = ? AND team_id = ?")
+    .bind(gebruikersnaam, team)
     .first();
   if (!admin) return json({ error: "Onjuiste gebruikersnaam of wachtwoord." }, 401);
 
@@ -169,74 +168,78 @@ async function handleLogin(req, env) {
 
   const token = uid();
   const expires = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000).toISOString();
-  await env.DB.prepare("INSERT INTO sessions (token, admin_id, expires_at) VALUES (?, ?, ?)")
-    .bind(token, admin.id, expires)
+  await env.DB.prepare("INSERT INTO sessions (token, admin_id, team_id, expires_at) VALUES (?, ?, ?, ?)")
+    .bind(token, admin.id, team, expires)
     .run();
 
   return json({ token, expires });
 }
 
-async function handleGetPersonen(req, env) {
-  const personen = await getPersonenMetFuncties(env.DB);
+async function handleGetPersonen(req, env, ctx) {
+  const personen = await getPersonenMetFuncties(env.DB, ctx.team);
   return json({ personen });
 }
 
-async function handleAddPersoon(req, env) {
+async function handleAddPersoon(req, env, ctx) {
+  const team = ctx.team;
   const { naam } = await req.json();
   if (!naam || !naam.trim()) return json({ error: "Naam is verplicht." }, 400);
 
-  const aantal = await env.DB.prepare("SELECT COUNT(*) as n FROM personen").first();
+  const aantal = await env.DB.prepare("SELECT COUNT(*) as n FROM personen WHERE team_id = ?").bind(team).first();
   if (aantal.n >= 10) return json({ error: "Maximaal 10 namen toegestaan." }, 400);
 
   const id = uid();
-  await env.DB.prepare("INSERT INTO personen (id, naam, volgorde) VALUES (?, ?, ?)")
-    .bind(id, naam.trim(), aantal.n)
+  await env.DB.prepare("INSERT INTO personen (id, naam, team_id, volgorde) VALUES (?, ?, ?, ?)")
+    .bind(id, naam.trim(), team, aantal.n)
     .run();
   return json({ id, naam: naam.trim() });
 }
 
 async function handleDeletePersoon(req, env, ctx) {
   const id = ctx.params.id;
-  await env.DB.prepare("DELETE FROM personen WHERE id = ?").bind(id).run();
+  const team = ctx.team;
+  await env.DB.prepare("DELETE FROM personen WHERE id = ? AND team_id = ?").bind(id, team).run();
   return json({ deleted: id });
 }
 
 async function handleSetFunctie(req, env, ctx) {
   const personId = ctx.params.id;
+  const team = ctx.team;
   const { functie_code, actief, prioriteit } = await req.json();
   if (!FUNCTIE_ORDER.includes(functie_code)) return json({ error: "Onbekende functie." }, 400);
 
   if (actief === false) {
-    await env.DB.prepare("DELETE FROM persoon_functies WHERE persoon_id = ? AND functie_code = ?")
-      .bind(personId, functie_code)
+    await env.DB.prepare("DELETE FROM persoon_functies WHERE persoon_id = ? AND functie_code = ? AND team_id = ?")
+      .bind(personId, functie_code, team)
       .run();
     return json({ ok: true });
   }
 
   const prio = prioriteit === "reserve" ? "reserve" : "vast";
   await env.DB.prepare(
-    `INSERT INTO persoon_functies (persoon_id, functie_code, prioriteit) VALUES (?, ?, ?)
-     ON CONFLICT(persoon_id, functie_code) DO UPDATE SET prioriteit = excluded.prioriteit`
+    `INSERT INTO persoon_functies (persoon_id, functie_code, team_id, prioriteit) VALUES (?, ?, ?, ?)
+     ON CONFLICT(persoon_id, functie_code, team_id) DO UPDATE SET prioriteit = excluded.prioriteit`
   )
-    .bind(personId, functie_code, prio)
+    .bind(personId, functie_code, team, prio)
     .run();
   return json({ ok: true });
 }
 
-async function handleGetDiensten(req, env) {
-  const diensten = await env.DB.prepare("SELECT id, datum FROM diensten ORDER BY datum").all();
+async function handleGetDiensten(req, env, ctx) {
+  const team = ctx.team;
+  const diensten = await env.DB.prepare("SELECT id, datum FROM diensten WHERE team_id = ? ORDER BY datum").bind(team).all();
   const result = [];
   for (const d of diensten.results) {
-    const beschikbaar = await env.DB.prepare("SELECT persoon_id FROM beschikbaarheid WHERE dienst_id = ?")
-      .bind(d.id)
+    const beschikbaar = await env.DB.prepare("SELECT persoon_id FROM beschikbaarheid WHERE dienst_id = ? AND team_id = ?")
+      .bind(d.id, team)
       .all();
     const toewijzing = await env.DB.prepare(
-      "SELECT persoon_id, functie_code, handmatig FROM toewijzingen WHERE dienst_id = ?"
+      "SELECT persoon_id, functie_code, handmatig FROM toewijzingen WHERE dienst_id = ? AND team_id = ?"
     )
-      .bind(d.id)
+      .bind(d.id, team)
       .all();
-    const tekorten = await env.DB.prepare("SELECT functie_code FROM tekorten WHERE dienst_id = ?")
-      .bind(d.id)
+    const tekorten = await env.DB.prepare("SELECT functie_code FROM tekorten WHERE dienst_id = ? AND team_id = ?")
+      .bind(d.id, team)
       .all();
 
     const toewijzingMap = {};
@@ -259,31 +262,34 @@ async function handleGetDiensten(req, env) {
   return json({ diensten: result });
 }
 
-async function handleAddDienst(req, env) {
+async function handleAddDienst(req, env, ctx) {
+  const team = ctx.team;
   const { datum } = await req.json();
   if (!datum) return json({ error: "Datum is verplicht." }, 400);
 
-  const bestaat = await env.DB.prepare("SELECT id FROM diensten WHERE datum = ?").bind(datum).first();
+  const bestaat = await env.DB.prepare("SELECT id FROM diensten WHERE datum = ? AND team_id = ?").bind(datum, team).first();
   if (bestaat) return json({ error: "Er bestaat al een dienst op deze datum." }, 400);
 
   const id = uid();
-  await env.DB.prepare("INSERT INTO diensten (id, datum) VALUES (?, ?)").bind(id, datum).run();
+  await env.DB.prepare("INSERT INTO diensten (id, datum, team_id) VALUES (?, ?, ?)").bind(id, datum, team).run();
 
-  // Standaard: iedereen beschikbaar
-  const personen = await env.DB.prepare("SELECT id FROM personen").all();
+  const personen = await env.DB.prepare("SELECT id FROM personen WHERE team_id = ?").bind(team).all();
   for (const p of personen.results) {
-    await env.DB.prepare("INSERT INTO beschikbaarheid (dienst_id, persoon_id) VALUES (?, ?)").bind(id, p.id).run();
+    await env.DB.prepare("INSERT INTO beschikbaarheid (dienst_id, persoon_id, team_id) VALUES (?, ?, ?)")
+      .bind(id, p.id, team)
+      .run();
   }
 
   return json({ id, datum });
 }
 
-async function handleAddPeriode(req, env) {
+async function handleAddPeriode(req, env, ctx) {
+  const team = ctx.team;
   const { van, tot, interval } = await req.json();
   if (!van || !tot || !interval || interval < 1) return json({ error: "Van, tot en interval zijn verplicht." }, 400);
 
-  const personen = await env.DB.prepare("SELECT id FROM personen").all();
-  const bestaande = await env.DB.prepare("SELECT datum FROM diensten").all();
+  const personen = await env.DB.prepare("SELECT id FROM personen WHERE team_id = ?").bind(team).all();
+  const bestaande = await env.DB.prepare("SELECT datum FROM diensten WHERE team_id = ?").bind(team).all();
   const bestaandeSet = new Set(bestaande.results.map((r) => r.datum));
 
   const start = new Date(van + "T00:00:00Z");
@@ -298,9 +304,11 @@ async function handleAddPeriode(req, env) {
 
   for (const datum of nieuwe) {
     const id = uid();
-    await env.DB.prepare("INSERT INTO diensten (id, datum) VALUES (?, ?)").bind(id, datum).run();
+    await env.DB.prepare("INSERT INTO diensten (id, datum, team_id) VALUES (?, ?, ?)").bind(id, datum, team).run();
     for (const p of personen.results) {
-      await env.DB.prepare("INSERT INTO beschikbaarheid (dienst_id, persoon_id) VALUES (?, ?)").bind(id, p.id).run();
+      await env.DB.prepare("INSERT INTO beschikbaarheid (dienst_id, persoon_id, team_id) VALUES (?, ?, ?)")
+        .bind(id, p.id, team)
+        .run();
     }
   }
 
@@ -309,23 +317,25 @@ async function handleAddPeriode(req, env) {
 
 async function handleDeleteDienst(req, env, ctx) {
   const id = ctx.params.id;
-  await env.DB.prepare("DELETE FROM diensten WHERE id = ?").bind(id).run();
+  const team = ctx.team;
+  await env.DB.prepare("DELETE FROM diensten WHERE id = ? AND team_id = ?").bind(id, team).run();
   return json({ deleted: id });
 }
 
 async function handleSetBeschikbaar(req, env, ctx) {
   const dienstId = ctx.params.id;
+  const team = ctx.team;
   const { persoon_id, beschikbaar } = await req.json();
 
   if (beschikbaar) {
     await env.DB.prepare(
-      "INSERT OR IGNORE INTO beschikbaarheid (dienst_id, persoon_id) VALUES (?, ?)"
+      "INSERT OR IGNORE INTO beschikbaarheid (dienst_id, persoon_id, team_id) VALUES (?, ?, ?)"
     )
-      .bind(dienstId, persoon_id)
+      .bind(dienstId, persoon_id, team)
       .run();
   } else {
-    await env.DB.prepare("DELETE FROM beschikbaarheid WHERE dienst_id = ? AND persoon_id = ?")
-      .bind(dienstId, persoon_id)
+    await env.DB.prepare("DELETE FROM beschikbaarheid WHERE dienst_id = ? AND persoon_id = ? AND team_id = ?")
+      .bind(dienstId, persoon_id, team)
       .run();
   }
   return json({ ok: true });
@@ -333,14 +343,15 @@ async function handleSetBeschikbaar(req, env, ctx) {
 
 async function handleSetAlleBeschikbaar(req, env, ctx) {
   const dienstId = ctx.params.id;
+  const team = ctx.team;
   const { aan } = await req.json();
 
-  await env.DB.prepare("DELETE FROM beschikbaarheid WHERE dienst_id = ?").bind(dienstId).run();
+  await env.DB.prepare("DELETE FROM beschikbaarheid WHERE dienst_id = ? AND team_id = ?").bind(dienstId, team).run();
   if (aan) {
-    const personen = await env.DB.prepare("SELECT id FROM personen").all();
+    const personen = await env.DB.prepare("SELECT id FROM personen WHERE team_id = ?").bind(team).all();
     for (const p of personen.results) {
-      await env.DB.prepare("INSERT INTO beschikbaarheid (dienst_id, persoon_id) VALUES (?, ?)")
-        .bind(dienstId, p.id)
+      await env.DB.prepare("INSERT INTO beschikbaarheid (dienst_id, persoon_id, team_id) VALUES (?, ?, ?)")
+        .bind(dienstId, p.id, team)
         .run();
     }
   }
@@ -349,69 +360,64 @@ async function handleSetAlleBeschikbaar(req, env, ctx) {
 
 async function handleIndelenEen(req, env, ctx) {
   const dienstId = ctx.params.id;
-  const allePersonen = await getPersonenMetFuncties(env.DB);
-  const beschikbaarRows = await env.DB.prepare("SELECT persoon_id FROM beschikbaarheid WHERE dienst_id = ?")
-    .bind(dienstId)
+  const team = ctx.team;
+  const allePersonen = await getPersonenMetFuncties(env.DB, team);
+  const beschikbaarRows = await env.DB.prepare("SELECT persoon_id FROM beschikbaarheid WHERE dienst_id = ? AND team_id = ?")
+    .bind(dienstId, team)
     .all();
   const beschikbaarIds = new Set(beschikbaarRows.results.map((r) => r.persoon_id));
   const beschikbarePersonen = allePersonen.filter((p) => beschikbaarIds.has(p.id));
 
-  const counts = await buildCounts(env.DB);
+  const counts = await buildCounts(env.DB, team);
   const { toewijzing, tekorten } = assignDienst(beschikbarePersonen, counts);
 
-  await env.DB.prepare("DELETE FROM toewijzingen WHERE dienst_id = ?").bind(dienstId).run();
-  await env.DB.prepare("DELETE FROM tekorten WHERE dienst_id = ?").bind(dienstId).run();
+  await env.DB.prepare("DELETE FROM toewijzingen WHERE dienst_id = ? AND team_id = ?").bind(dienstId, team).run();
+  await env.DB.prepare("DELETE FROM tekorten WHERE dienst_id = ? AND team_id = ?").bind(dienstId, team).run();
 
   for (const code of FUNCTIE_ORDER) {
     for (const personId of toewijzing[code]) {
       await env.DB.prepare(
-        "INSERT INTO toewijzingen (dienst_id, persoon_id, functie_code) VALUES (?, ?, ?)"
+        "INSERT INTO toewijzingen (dienst_id, persoon_id, functie_code, team_id) VALUES (?, ?, ?, ?)"
       )
-        .bind(dienstId, personId, code)
+        .bind(dienstId, personId, code, team)
         .run();
     }
   }
   for (const code of tekorten) {
-    await env.DB.prepare("INSERT INTO tekorten (dienst_id, functie_code) VALUES (?, ?)")
-      .bind(dienstId, code)
+    await env.DB.prepare("INSERT INTO tekorten (dienst_id, functie_code, team_id) VALUES (?, ?, ?)")
+      .bind(dienstId, code, team)
       .run();
   }
 
   return json({ toewijzing, tekorten });
 }
 
-// Handmatige correctie: vervang op één functie-plek de toegewezen persoon door een
-// andere, voor deze specifieke dienst. Telt niet mee voor de eerlijke verdeling
-// (zie buildCounts, die WHERE handmatig = 0 gebruikt). Alleen toegestaan als de
-// nieuwe persoon beschikbaar is voor deze dienst én de functie mag.
 async function handleWijzigToewijzing(req, env, ctx) {
   const dienstId = ctx.params.id;
+  const team = ctx.team;
   const { functie_code, oude_persoon_id, nieuwe_persoon_id } = await req.json();
 
   if (!FUNCTIE_ORDER.includes(functie_code)) return json({ error: "Onbekende functie." }, 400);
   if (!nieuwe_persoon_id) return json({ error: "Nieuwe persoon is verplicht." }, 400);
 
   const beschikbaar = await env.DB.prepare(
-    "SELECT 1 FROM beschikbaarheid WHERE dienst_id = ? AND persoon_id = ?"
+    "SELECT 1 FROM beschikbaarheid WHERE dienst_id = ? AND persoon_id = ? AND team_id = ?"
   )
-    .bind(dienstId, nieuwe_persoon_id)
+    .bind(dienstId, nieuwe_persoon_id, team)
     .first();
   if (!beschikbaar) return json({ error: "Deze persoon is niet beschikbaar voor deze dienst." }, 400);
 
   const magFunctie = await env.DB.prepare(
-    "SELECT 1 FROM persoon_functies WHERE persoon_id = ? AND functie_code = ?"
+    "SELECT 1 FROM persoon_functies WHERE persoon_id = ? AND functie_code = ? AND team_id = ?"
   )
-    .bind(nieuwe_persoon_id, functie_code)
+    .bind(nieuwe_persoon_id, functie_code, team)
     .first();
   if (!magFunctie) return json({ error: "Deze persoon mag deze functie niet vervullen." }, 400);
 
-  // Staat de nieuwe persoon al ergens anders ingedeeld binnen deze dienst? Dan wisselen
-  // we de twee plekken om, in plaats van te weigeren — mits beide ook de andere
-  // functie mogen vervullen.
   const bestaandeRij = await env.DB.prepare(
-    "SELECT functie_code FROM toewijzingen WHERE dienst_id = ? AND persoon_id = ?"
+    "SELECT functie_code FROM toewijzingen WHERE dienst_id = ? AND persoon_id = ? AND team_id = ?"
   )
-    .bind(dienstId, nieuwe_persoon_id)
+    .bind(dienstId, nieuwe_persoon_id, team)
     .first();
 
   if (bestaandeRij) {
@@ -423,38 +429,37 @@ async function handleWijzigToewijzing(req, env, ctx) {
       return json({ error: "Kan niet wisselen: er staat hier niemand om mee te ruilen." }, 400);
     }
 
-    // De oude persoon moet de functie van de nieuwe persoon ook mogen, anders is de wissel niet geldig.
     const oudeMagNieuweFunctie = await env.DB.prepare(
-      "SELECT 1 FROM persoon_functies WHERE persoon_id = ? AND functie_code = ?"
+      "SELECT 1 FROM persoon_functies WHERE persoon_id = ? AND functie_code = ? AND team_id = ?"
     )
-      .bind(oude_persoon_id, huidigeFunctieVanNieuwePersoon)
+      .bind(oude_persoon_id, huidigeFunctieVanNieuwePersoon, team)
       .first();
     if (!oudeMagNieuweFunctie) {
       return json({ error: "De huidige persoon op deze plek mag de andere functie niet vervullen — wisselen niet mogelijk." }, 400);
     }
 
-    await env.DB.prepare("DELETE FROM toewijzingen WHERE dienst_id = ? AND persoon_id = ?")
-      .bind(dienstId, oude_persoon_id)
+    await env.DB.prepare("DELETE FROM toewijzingen WHERE dienst_id = ? AND persoon_id = ? AND team_id = ?")
+      .bind(dienstId, oude_persoon_id, team)
       .run();
-    await env.DB.prepare("DELETE FROM toewijzingen WHERE dienst_id = ? AND persoon_id = ?")
-      .bind(dienstId, nieuwe_persoon_id)
-      .run();
-    await env.DB.prepare(
-      "INSERT INTO toewijzingen (dienst_id, persoon_id, functie_code, handmatig) VALUES (?, ?, ?, 1)"
-    )
-      .bind(dienstId, nieuwe_persoon_id, functie_code)
+    await env.DB.prepare("DELETE FROM toewijzingen WHERE dienst_id = ? AND persoon_id = ? AND team_id = ?")
+      .bind(dienstId, nieuwe_persoon_id, team)
       .run();
     await env.DB.prepare(
-      "INSERT INTO toewijzingen (dienst_id, persoon_id, functie_code, handmatig) VALUES (?, ?, ?, 1)"
+      "INSERT INTO toewijzingen (dienst_id, persoon_id, functie_code, handmatig, team_id) VALUES (?, ?, ?, 1, ?)"
     )
-      .bind(dienstId, oude_persoon_id, huidigeFunctieVanNieuwePersoon)
+      .bind(dienstId, nieuwe_persoon_id, functie_code, team)
+      .run();
+    await env.DB.prepare(
+      "INSERT INTO toewijzingen (dienst_id, persoon_id, functie_code, handmatig, team_id) VALUES (?, ?, ?, 1, ?)"
+    )
+      .bind(dienstId, oude_persoon_id, huidigeFunctieVanNieuwePersoon, team)
       .run();
 
-    await env.DB.prepare("DELETE FROM tekorten WHERE dienst_id = ? AND functie_code = ?")
-      .bind(dienstId, functie_code)
+    await env.DB.prepare("DELETE FROM tekorten WHERE dienst_id = ? AND functie_code = ? AND team_id = ?")
+      .bind(dienstId, functie_code, team)
       .run();
-    await env.DB.prepare("DELETE FROM tekorten WHERE dienst_id = ? AND functie_code = ?")
-      .bind(dienstId, huidigeFunctieVanNieuwePersoon)
+    await env.DB.prepare("DELETE FROM tekorten WHERE dienst_id = ? AND functie_code = ? AND team_id = ?")
+      .bind(dienstId, huidigeFunctieVanNieuwePersoon, team)
       .run();
 
     return json({ ok: true, gewisseld: true });
@@ -462,34 +467,32 @@ async function handleWijzigToewijzing(req, env, ctx) {
 
   if (oude_persoon_id) {
     await env.DB.prepare(
-      "DELETE FROM toewijzingen WHERE dienst_id = ? AND persoon_id = ? AND functie_code = ?"
+      "DELETE FROM toewijzingen WHERE dienst_id = ? AND persoon_id = ? AND functie_code = ? AND team_id = ?"
     )
-      .bind(dienstId, oude_persoon_id, functie_code)
+      .bind(dienstId, oude_persoon_id, functie_code, team)
       .run();
   }
 
   await env.DB.prepare(
-    "INSERT INTO toewijzingen (dienst_id, persoon_id, functie_code, handmatig) VALUES (?, ?, ?, 1)"
+    "INSERT INTO toewijzingen (dienst_id, persoon_id, functie_code, handmatig, team_id) VALUES (?, ?, ?, 1, ?)"
   )
-    .bind(dienstId, nieuwe_persoon_id, functie_code)
+    .bind(dienstId, nieuwe_persoon_id, functie_code, team)
     .run();
 
-  // Als deze plek eerder een tekort was, is dat nu opgelost.
-  await env.DB.prepare("DELETE FROM tekorten WHERE dienst_id = ? AND functie_code = ?")
-    .bind(dienstId, functie_code)
+  await env.DB.prepare("DELETE FROM tekorten WHERE dienst_id = ? AND functie_code = ? AND team_id = ?")
+    .bind(dienstId, functie_code, team)
     .run();
 
   return json({ ok: true });
 }
 
-async function handleIndelenAlles(req, env) {
-  const alleDiensten = await env.DB.prepare("SELECT id FROM diensten ORDER BY datum").all();
-  const allePersonen = await getPersonenMetFuncties(env.DB);
+async function handleIndelenAlles(req, env, ctx) {
+  const team = ctx.team;
+  const alleDiensten = await env.DB.prepare("SELECT id FROM diensten WHERE team_id = ? ORDER BY datum").bind(team).all();
+  const allePersonen = await getPersonenMetFuncties(env.DB, team);
 
-  // Reset alle bestaande toewijzingen, dan opnieuw opbouwen in datumvolgorde
-  // zodat de eerlijke verdeling chronologisch klopt.
-  await env.DB.prepare("DELETE FROM toewijzingen").run();
-  await env.DB.prepare("DELETE FROM tekorten").run();
+  await env.DB.prepare("DELETE FROM toewijzingen WHERE team_id = ?").bind(team).run();
+  await env.DB.prepare("DELETE FROM tekorten WHERE team_id = ?").bind(team).run();
 
   const counts = {};
   allePersonen.forEach((p) => {
@@ -499,9 +502,9 @@ async function handleIndelenAlles(req, env) {
 
   for (const d of alleDiensten.results) {
     const beschikbaarRows = await env.DB.prepare(
-      "SELECT persoon_id FROM beschikbaarheid WHERE dienst_id = ?"
+      "SELECT persoon_id FROM beschikbaarheid WHERE dienst_id = ? AND team_id = ?"
     )
-      .bind(d.id)
+      .bind(d.id, team)
       .all();
     const beschikbaarIds = new Set(beschikbaarRows.results.map((r) => r.persoon_id));
     const beschikbarePersonen = allePersonen.filter((p) => beschikbaarIds.has(p.id));
@@ -511,15 +514,15 @@ async function handleIndelenAlles(req, env) {
     for (const code of FUNCTIE_ORDER) {
       for (const personId of toewijzing[code]) {
         await env.DB.prepare(
-          "INSERT INTO toewijzingen (dienst_id, persoon_id, functie_code) VALUES (?, ?, ?)"
+          "INSERT INTO toewijzingen (dienst_id, persoon_id, functie_code, team_id) VALUES (?, ?, ?, ?)"
         )
-          .bind(d.id, personId, code)
+          .bind(d.id, personId, code, team)
           .run();
       }
     }
     for (const code of tekorten) {
-      await env.DB.prepare("INSERT INTO tekorten (dienst_id, functie_code) VALUES (?, ?)")
-        .bind(d.id, code)
+      await env.DB.prepare("INSERT INTO tekorten (dienst_id, functie_code, team_id) VALUES (?, ?, ?)")
+        .bind(d.id, code, team)
         .run();
     }
   }
@@ -527,10 +530,10 @@ async function handleIndelenAlles(req, env) {
   return json({ ok: true, aantal: alleDiensten.results.length });
 }
 
-// Publieke, read-only endpoint voor gasten — geen login nodig
-async function handlePubliekRooster(req, env) {
-  const personen = await getPersonenMetFuncties(env.DB);
-  const dienstenResp = await handleGetDiensten(req, env);
+async function handlePubliekRooster(req, env, ctx) {
+  const team = ctx.team;
+  const personen = await getPersonenMetFuncties(env.DB, team);
+  const dienstenResp = await handleGetDiensten(req, env, ctx);
   const dienstenData = await dienstenResp.json();
   return json({ personen, diensten: dienstenData.diensten });
 }
@@ -560,6 +563,7 @@ const routes = [
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    const team = request.headers.get("X-Team") || "veluwsekant";
 
     if (request.method === "OPTIONS") {
       return json({});
@@ -570,7 +574,7 @@ export default {
       const match = url.pathname.match(route.pattern);
       if (!match) continue;
 
-      const ctx = {};
+      const ctx = { team };
       if (route.params) {
         ctx.params = {};
         route.params.forEach((name, idx) => (ctx.params[name] = match[idx + 1]));

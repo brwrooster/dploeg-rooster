@@ -7,6 +7,16 @@ const FUNCTIE_ORDER = ["B", "M", "CTS", "CL", "OL", "CHV", "OHV"];
 const FUNCTIE_SLOTS = { B: 1, M: 2, CTS: 1, CL: 1, OL: 1, CHV: 1, OHV: 1 };
 const SESSION_DAYS = 30;
 
+// Welke functies elk team daadwerkelijk gebruikt bij het indelen/tekorten-berekenen.
+// Onbekende teams vallen terug op de Veluwsekant-set.
+const TEAM_FUNCTIES = {
+  veluwsekant: ["B", "M", "CTS", "CL", "OL"],
+  buiten: ["B", "M", "CTS", "CHV", "OHV"],
+};
+function functiesVoorTeam(team) {
+  return TEAM_FUNCTIES[team] || TEAM_FUNCTIES.veluwsekant;
+}
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -54,11 +64,12 @@ function requireAuth(handler) {
 // ---------- Assignment engine (server-side, mirrors the React prototype logic) ----------
 
 async function buildCounts(db, team) {
+  const functies = functiesVoorTeam(team);
   const personen = await db.prepare("SELECT id FROM personen WHERE team_id = ?").bind(team).all();
   const counts = {};
   personen.results.forEach((p) => {
     counts[p.id] = { total: 0 };
-    FUNCTIE_ORDER.forEach((f) => (counts[p.id][f] = 0));
+    functies.forEach((f) => (counts[p.id][f] = 0));
   });
   const rows = await db.prepare("SELECT persoon_id, functie_code FROM toewijzingen WHERE handmatig = 0 AND team_id = ?").bind(team).all();
   rows.results.forEach((r) => {
@@ -93,14 +104,14 @@ function magFunctie(persoon, code) {
   return persoon.functies.some((f) => f.code === code);
 }
 
-function assignDienst(beschikbarePersonen, counts) {
+function assignDienst(beschikbarePersonen, counts, functieOrder) {
   const toewijzing = {};
-  FUNCTIE_ORDER.forEach((f) => (toewijzing[f] = []));
+  functieOrder.forEach((f) => (toewijzing[f] = []));
   const reedsIngedeeld = new Set();
   const tekorten = [];
 
   let remainingSlots = [];
-  FUNCTIE_ORDER.forEach((code) => {
+  functieOrder.forEach((code) => {
     for (let i = 0; i < FUNCTIE_SLOTS[code]; i++) remainingSlots.push(code);
   });
 
@@ -208,9 +219,7 @@ async function handleSetFunctie(req, env, ctx) {
   const personId = ctx.params.id;
   const team = ctx.team;
   const { functie_code, actief, prioriteit } = await req.json();
-  if (!FUNCTIE_ORDER.includes(functie_code)) return json({ error: "Onbekende functie." }, 400);
-
-  if (actief === false) {
+  if (!functiesVoorTeam(team).includes(functie_code)) return json({ error: "Onbekende functie." }, 400);
     await env.DB.prepare("DELETE FROM persoon_functies WHERE persoon_id = ? AND functie_code = ? AND team_id = ?")
       .bind(personId, functie_code, team)
       .run();
@@ -245,7 +254,7 @@ async function handleGetDiensten(req, env, ctx) {
       .all();
 
     const toewijzingMap = {};
-    FUNCTIE_ORDER.forEach((f) => (toewijzingMap[f] = []));
+    functiesVoorTeam(team).forEach((f) => (toewijzingMap[f] = []));
     const handmatigPersonen = [];
     toewijzing.results.forEach((r) => {
       toewijzingMap[r.functie_code]?.push(r.persoon_id);
@@ -371,12 +380,12 @@ async function handleIndelenEen(req, env, ctx) {
   const beschikbarePersonen = allePersonen.filter((p) => beschikbaarIds.has(p.id));
 
   const counts = await buildCounts(env.DB, team);
-  const { toewijzing, tekorten } = assignDienst(beschikbarePersonen, counts);
+  const { toewijzing, tekorten } = assignDienst(beschikbarePersonen, counts, functiesVoorTeam(team));
 
   await env.DB.prepare("DELETE FROM toewijzingen WHERE dienst_id = ? AND team_id = ?").bind(dienstId, team).run();
   await env.DB.prepare("DELETE FROM tekorten WHERE dienst_id = ? AND team_id = ?").bind(dienstId, team).run();
 
-  for (const code of FUNCTIE_ORDER) {
+  for (const code of functiesVoorTeam(team)) {
     for (const personId of toewijzing[code]) {
       await env.DB.prepare(
         "INSERT INTO toewijzingen (dienst_id, persoon_id, functie_code, team_id) VALUES (?, ?, ?, ?)"
@@ -399,7 +408,7 @@ async function handleWijzigToewijzing(req, env, ctx) {
   const team = ctx.team;
   const { functie_code, oude_persoon_id, nieuwe_persoon_id } = await req.json();
 
-  if (!FUNCTIE_ORDER.includes(functie_code)) return json({ error: "Onbekende functie." }, 400);
+  if (!functiesVoorTeam(team).includes(functie_code)) return json({ error: "Onbekende functie." }, 400);
   if (!nieuwe_persoon_id) return json({ error: "Nieuwe persoon is verplicht." }, 400);
 
   const beschikbaar = await env.DB.prepare(
@@ -490,6 +499,7 @@ async function handleWijzigToewijzing(req, env, ctx) {
 
 async function handleIndelenAlles(req, env, ctx) {
   const team = ctx.team;
+  const functies = functiesVoorTeam(team);
   const alleDiensten = await env.DB.prepare("SELECT id FROM diensten WHERE team_id = ? ORDER BY datum").bind(team).all();
   const allePersonen = await getPersonenMetFuncties(env.DB, team);
 
@@ -499,7 +509,7 @@ async function handleIndelenAlles(req, env, ctx) {
   const counts = {};
   allePersonen.forEach((p) => {
     counts[p.id] = { total: 0 };
-    FUNCTIE_ORDER.forEach((f) => (counts[p.id][f] = 0));
+    functies.forEach((f) => (counts[p.id][f] = 0));
   });
 
   for (const d of alleDiensten.results) {
@@ -511,9 +521,9 @@ async function handleIndelenAlles(req, env, ctx) {
     const beschikbaarIds = new Set(beschikbaarRows.results.map((r) => r.persoon_id));
     const beschikbarePersonen = allePersonen.filter((p) => beschikbaarIds.has(p.id));
 
-    const { toewijzing, tekorten } = assignDienst(beschikbarePersonen, counts);
+    const { toewijzing, tekorten } = assignDienst(beschikbarePersonen, counts, functies);
 
-    for (const code of FUNCTIE_ORDER) {
+    for (const code of functies) {
       for (const personId of toewijzing[code]) {
         await env.DB.prepare(
           "INSERT INTO toewijzingen (dienst_id, persoon_id, functie_code, team_id) VALUES (?, ?, ?, ?)"

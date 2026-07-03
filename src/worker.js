@@ -1,3 +1,5 @@
+// Deploy trigger - multi-team fix
+
 // Cloudflare Worker — D-Ploeg Rooster API (MULTI-TEAM)
 // Bindings nodig (zie wrangler.toml): DB (D1 database)
 

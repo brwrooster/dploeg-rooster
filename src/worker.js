@@ -220,6 +220,8 @@ async function handleSetFunctie(req, env, ctx) {
   const team = ctx.team;
   const { functie_code, actief, prioriteit } = await req.json();
   if (!functiesVoorTeam(team).includes(functie_code)) return json({ error: "Onbekende functie." }, 400);
+
+  if (actief === false) {
     await env.DB.prepare("DELETE FROM persoon_functies WHERE persoon_id = ? AND functie_code = ? AND team_id = ?")
       .bind(personId, functie_code, team)
       .run();

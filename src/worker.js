@@ -3,8 +3,8 @@
 // Cloudflare Worker — D-Ploeg Rooster API (MULTI-TEAM)
 // Bindings nodig (zie wrangler.toml): DB (D1 database)
 
-const FUNCTIE_ORDER = ["B", "M", "CTS", "CL", "OL"];
-const FUNCTIE_SLOTS = { B: 1, M: 2, CTS: 1, CL: 1, OL: 1 };
+const FUNCTIE_ORDER = ["B", "M", "CTS", "CL", "OL", "CHV", "OHV"];
+const FUNCTIE_SLOTS = { B: 1, M: 2, CTS: 1, CL: 1, OL: 1, CHV: 1, OHV: 1 };
 const SESSION_DAYS = 30;
 
 function json(data, status = 200) {

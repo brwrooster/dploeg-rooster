@@ -11,7 +11,6 @@ const SESSION_DAYS = 30;
 // Onbekende teams vallen terug op de Veluwsekant-set.
 const TEAM_FUNCTIES = {
   veluwsekant: ["B", "M", "CTS", "CL", "OL"],
-  buiten: ["B", "M", "CTS", "CHV", "OHV"],
   aploeg: ["B", "M", "CTS", "CL", "OL"],
   bploeg: ["B", "M", "CTS", "CL", "OL"],
   cploeg: ["B", "M", "CTS", "CL", "OL"],
@@ -21,7 +20,6 @@ const TEAM_FUNCTIES = {
 // (zodat de frontend de juiste titel/branding kan tonen zonder dit hard te coderen).
 const TEAM_NAMEN = {
   veluwsekant: "D-Ploeg Veluwsekant",
-  buiten: "Buiten",
   aploeg: "A-Ploeg Veluwsekant",
   bploeg: "B-Ploeg Veluwsekant",
   cploeg: "C-Ploeg Veluwsekant",

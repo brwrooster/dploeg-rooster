@@ -12,9 +12,27 @@ const SESSION_DAYS = 30;
 const TEAM_FUNCTIES = {
   veluwsekant: ["B", "M", "CTS", "CL", "OL"],
   buiten: ["B", "M", "CTS", "CHV", "OHV"],
+  aploeg: ["B", "M", "CTS", "CL", "OL"],
+  bploeg: ["B", "M", "CTS", "CL", "OL"],
+  cploeg: ["B", "M", "CTS", "CL", "OL"],
 };
+
+// Weergavenamen per team, voor gebruik in de publieke rooster-respons
+// (zodat de frontend de juiste titel/branding kan tonen zonder dit hard te coderen).
+const TEAM_NAMEN = {
+  veluwsekant: "D-Ploeg Veluwsekant",
+  buiten: "Buiten",
+  aploeg: "A-Ploeg Veluwsekant",
+  bploeg: "B-Ploeg Veluwsekant",
+  cploeg: "C-Ploeg Veluwsekant",
+};
+
 function functiesVoorTeam(team) {
   return TEAM_FUNCTIES[team] || TEAM_FUNCTIES.veluwsekant;
+}
+
+function naamVoorTeam(team) {
+  return TEAM_NAMEN[team] || team;
 }
 
 function json(data, status = 200) {
@@ -38,25 +56,27 @@ async function sha256(text) {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-async function getAdminFromToken(db, token, team) {
+// --- AANGEPAST: sessie bevat nu het team, dus we hoeven het niet meer los te valideren ---
+async function getSession(db, token) {
   if (!token) return null;
   const row = await db
-    .prepare("SELECT s.admin_id, s.expires_at FROM sessions s WHERE s.token = ? AND s.team_id = ?")
-    .bind(token, team)
+    .prepare("SELECT s.admin_id, s.team_id, s.expires_at FROM sessions s WHERE s.token = ?")
+    .bind(token)
     .first();
   if (!row) return null;
   if (new Date(row.expires_at) < new Date()) return null;
-  return row.admin_id;
+  return row; // { admin_id, team_id, expires_at }
 }
 
+// --- AANGEPAST: team komt nu uit de sessie (server-side), niet meer uit de X-Team header ---
 function requireAuth(handler) {
   return async (req, env, ctx) => {
     const authHeader = req.headers.get("Authorization") || "";
     const token = authHeader.replace("Bearer ", "").trim();
-    const team = ctx.team;
-    const adminId = await getAdminFromToken(env.DB, token, team);
-    if (!adminId) return json({ error: "Niet ingelogd of sessie verlopen." }, 401);
-    ctx.adminId = adminId;
+    const session = await getSession(env.DB, token);
+    if (!session) return json({ error: "Niet ingelogd of sessie verlopen." }, 401);
+    ctx.adminId = session.admin_id;
+    ctx.team = session.team_id; // <-- overschrijft het team met wat er écht bij dit account hoort
     return handler(req, env, ctx);
   };
 }
@@ -166,13 +186,13 @@ function assignDienst(beschikbarePersonen, counts, functieOrder) {
 
 // ---------- Route handlers ----------
 
+// --- AANGEPAST: gebruikersnaam is nu team-onafhankelijk uniek; team volgt uit het account zelf ---
 async function handleLogin(req, env, ctx) {
-  const team = ctx.team;
   const { gebruikersnaam, wachtwoord } = await req.json();
   if (!gebruikersnaam || !wachtwoord) return json({ error: "Gebruikersnaam en wachtwoord verplicht." }, 400);
 
-  const admin = await env.DB.prepare("SELECT id, wachtwoord_hash FROM admins WHERE gebruikersnaam = ? AND team_id = ?")
-    .bind(gebruikersnaam, team)
+  const admin = await env.DB.prepare("SELECT id, team_id, wachtwoord_hash FROM admins WHERE gebruikersnaam = ?")
+    .bind(gebruikersnaam)
     .first();
   if (!admin) return json({ error: "Onjuiste gebruikersnaam of wachtwoord." }, 401);
 
@@ -182,10 +202,11 @@ async function handleLogin(req, env, ctx) {
   const token = uid();
   const expires = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000).toISOString();
   await env.DB.prepare("INSERT INTO sessions (token, admin_id, team_id, expires_at) VALUES (?, ?, ?, ?)")
-    .bind(token, admin.id, team, expires)
+    .bind(token, admin.id, admin.team_id, expires)
     .run();
 
-  return json({ token, expires });
+  // team_id en team_naam gaan mee terug, zodat de frontend weet in welk team hij is ingelogd
+  return json({ token, expires, team_id: admin.team_id, team_naam: naamVoorTeam(admin.team_id) });
 }
 
 async function handleGetPersonen(req, env, ctx) {
@@ -544,12 +565,19 @@ async function handleIndelenAlles(req, env, ctx) {
   return json({ ok: true, aantal: alleDiensten.results.length });
 }
 
+// --- AANGEPAST: publieke rooster-route geeft nu ook de teamnaam mee, voor de frontend-titel ---
 async function handlePubliekRooster(req, env, ctx) {
   const team = ctx.team;
   const personen = await getPersonenMetFuncties(env.DB, team);
   const dienstenResp = await handleGetDiensten(req, env, ctx);
   const dienstenData = await dienstenResp.json();
-  return json({ personen, diensten: dienstenData.diensten });
+  return json({ team, team_naam: naamVoorTeam(team), personen, diensten: dienstenData.diensten });
+}
+
+// --- NIEUW: lijst van teams, zodat de gast-weergave een keuzemenu kan tonen zonder dit hard te coderen ---
+async function handleTeamsLijst(req, env, ctx) {
+  const teams = Object.keys(TEAM_FUNCTIES).map((id) => ({ id, naam: naamVoorTeam(id) }));
+  return json({ teams });
 }
 
 // ---------- Router ----------
@@ -557,6 +585,7 @@ async function handlePubliekRooster(req, env, ctx) {
 const routes = [
   { method: "POST", pattern: /^\/api\/login$/, handler: handleLogin },
   { method: "GET", pattern: /^\/api\/rooster$/, handler: handlePubliekRooster },
+  { method: "GET", pattern: /^\/api\/teams$/, handler: handleTeamsLijst },
 
   { method: "GET", pattern: /^\/api\/personen$/, handler: requireAuth(handleGetPersonen) },
   { method: "POST", pattern: /^\/api\/personen$/, handler: requireAuth(handleAddPersoon) },
@@ -577,6 +606,8 @@ const routes = [
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    // X-Team blijft alleen gebruikt voor routes ZONDER sessie (gast-rooster, teams-lijst).
+    // Voor ingelogde acties bepaalt de sessie (zie requireAuth) het team, nooit deze header.
     const team = request.headers.get("X-Team") || "veluwsekant";
 
     if (request.method === "OPTIONS") {

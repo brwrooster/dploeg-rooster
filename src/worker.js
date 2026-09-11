@@ -188,9 +188,13 @@ function assignDienst(beschikbarePersonen, counts, functieOrder, vorigeFunctiePe
     //   2 = vast    + draaide deze functie WEL de vorige dienst  (alleen als het niet anders kan)
     //   3 = reserve + draaide deze functie WEL de vorige dienst  (laatste redmiddel)
     function rangVoor(persoon) {
-      const herhaalt = vorigeFunctiePerPersoon[persoon.id] === functieCode ? 2 : 0;
-      const reserve = prioriteitVoor(persoon, functieCode) === "reserve" ? 1 : 0;
-      return herhaalt + reserve;
+      const herhaalt = vorigeFunctiePerPersoon[persoon.id] === functieCode ? 4 : 0;
+      const reserve = prioriteitVoor(persoon, functieCode) === "reserve" ? 2 : 0;
+      // Iemand die ook Bevelvoerder-bevoegd is, wordt bij Manschap automatisch
+      // een tandje lager gerangschikt — die wordt liever als chauffeur ingezet
+      // en pas als Manschap gebruikt als er verder niemand anders is.
+      const bevelvoerderPenalty = functieCode === "M" && magFunctie(persoon, "B") ? 1 : 0;
+      return herhaalt + reserve + bevelvoerderPenalty;
     }
 
     kandidaten.sort((a, b) => {

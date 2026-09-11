@@ -25,6 +25,23 @@ const TEAM_NAMEN = {
   cploeg: "C-Ploeg Veluwsekant",
 };
 
+// Gekoppelde ploegen: mensen uit het gekoppelde team mogen als GAST worden ingevuld
+// wanneer het eigen team een gat heeft (verlof e.d.). Wederkerig.
+const GEKOPPELD_TEAM = {
+  veluwsekant: "bploeg", // D-ploeg <-> B-ploeg
+  bploeg: "veluwsekant",
+  aploeg: "cploeg", // A-ploeg <-> C-ploeg
+  cploeg: "aploeg",
+};
+
+// Functies waarbij het EIGEN team altijd voorrang heeft: zolang er een eigen,
+// beschikbaar en bevoegd teamlid is, mag een gast deze rol niet vervullen.
+const EIGEN_TEAM_VOORRANG = ["B", "CTS", "CL"];
+
+function gekoppeldTeam(team) {
+  return GEKOPPELD_TEAM[team] || null;
+}
+
 function functiesVoorTeam(team) {
   return TEAM_FUNCTIES[team] || TEAM_FUNCTIES.veluwsekant;
 }
@@ -122,7 +139,10 @@ function magFunctie(persoon, code) {
   return persoon.functies.some((f) => f.code === code);
 }
 
-function assignDienst(beschikbarePersonen, counts, functieOrder) {
+// vorigeFunctiePerPersoon: { persoon_id: functie_code } uit de VORIGE dienst van dit team.
+// Wordt gebruikt om te voorkomen dat iemand twee diensten op rij dezelfde functie draait.
+// Geldt voor ALLE functies, ook Bevelvoerder.
+function assignDienst(beschikbarePersonen, counts, functieOrder, vorigeFunctiePerPersoon = {}) {
   const toewijzing = {};
   functieOrder.forEach((f) => (toewijzing[f] = []));
   const reedsIngedeeld = new Set();
@@ -138,11 +158,11 @@ function assignDienst(beschikbarePersonen, counts, functieOrder) {
     let beste = null;
 
     distinctCodes.forEach((functieCode) => {
-      const alleKandidaten = beschikbarePersonen.filter(
+      // Alle bevoegde, nog niet ingedeelde mensen blijven kandidaat: een dienst moet
+      // altijd gevuld kunnen worden. De voorkeursvolgorde regelen we in de sortering.
+      const kandidaten = beschikbarePersonen.filter(
         (p) => !reedsIngedeeld.has(p.id) && magFunctie(p, functieCode)
       );
-      const vasteKandidaten = alleKandidaten.filter((p) => prioriteitVoor(p, functieCode) === "vast");
-      const kandidaten = vasteKandidaten.length > 0 ? vasteKandidaten : alleKandidaten;
 
       if (
         beste === null ||
@@ -162,7 +182,21 @@ function assignDienst(beschikbarePersonen, counts, functieOrder) {
       continue;
     }
 
+    // Voorkeursrang (lager = eerder gekozen):
+    //   0 = vast    + draaide deze functie NIET de vorige dienst
+    //   1 = reserve + draaide deze functie NIET de vorige dienst
+    //   2 = vast    + draaide deze functie WEL de vorige dienst  (alleen als het niet anders kan)
+    //   3 = reserve + draaide deze functie WEL de vorige dienst  (laatste redmiddel)
+    function rangVoor(persoon) {
+      const herhaalt = vorigeFunctiePerPersoon[persoon.id] === functieCode ? 2 : 0;
+      const reserve = prioriteitVoor(persoon, functieCode) === "reserve" ? 1 : 0;
+      return herhaalt + reserve;
+    }
+
     kandidaten.sort((a, b) => {
+      const ra = rangVoor(a);
+      const rb = rangVoor(b);
+      if (ra !== rb) return ra - rb;
       const fa = counts[a.id]?.[functieCode] ?? 0;
       const fb = counts[b.id]?.[functieCode] ?? 0;
       if (fa !== fb) return fa - fb;
@@ -180,6 +214,23 @@ function assignDienst(beschikbarePersonen, counts, functieOrder) {
   }
 
   return { toewijzing, tekorten: [...new Set(tekorten)] };
+}
+
+// Haalt de toewijzing op van de dienst die direct VOOR de opgegeven datum viel,
+// zodat het indelen kan voorkomen dat iemand dezelfde functie twee keer op rij draait.
+async function vorigeToewijzing(db, team, datum) {
+  const vorige = await db
+    .prepare("SELECT id FROM diensten WHERE team_id = ? AND datum < ? ORDER BY datum DESC LIMIT 1")
+    .bind(team, datum)
+    .first();
+  if (!vorige) return {};
+  const rows = await db
+    .prepare("SELECT persoon_id, functie_code FROM toewijzingen WHERE dienst_id = ? AND team_id = ?")
+    .bind(vorige.id, team)
+    .all();
+  const map = {};
+  rows.results.forEach((r) => (map[r.persoon_id] = r.functie_code));
+  return map;
 }
 
 // ---------- Route handlers ----------
@@ -224,6 +275,16 @@ async function handleAddPersoon(req, env, ctx) {
   await env.DB.prepare("INSERT INTO personen (id, naam, team_id, volgorde) VALUES (?, ?, ?, ?)")
     .bind(id, naam.trim(), team, aantal.n)
     .run();
+
+  // Nieuw teamlid meteen beschikbaar zetten voor alle bestaande diensten:
+  // standaard is iedereen beschikbaar, je vinkt alleen afwezigen uit.
+  const bestaandeDiensten = await env.DB.prepare("SELECT id FROM diensten WHERE team_id = ?").bind(team).all();
+  for (const d of bestaandeDiensten.results) {
+    await env.DB.prepare("INSERT OR IGNORE INTO beschikbaarheid (dienst_id, persoon_id, team_id) VALUES (?, ?, ?)")
+      .bind(d.id, id, team)
+      .run();
+  }
+
   return json({ id, naam: naam.trim() });
 }
 
@@ -261,6 +322,14 @@ async function handleGetDiensten(req, env, ctx) {
   const team = ctx.team;
   const diensten = await env.DB.prepare("SELECT id, datum FROM diensten WHERE team_id = ? ORDER BY datum").bind(team).all();
   const result = [];
+  // Namen van gasten (mensen uit het gekoppelde team die zijn ingevuld) verzamelen,
+  // zodat de frontend hun échte naam kan tonen in plaats van een onbekend id.
+  const gasten = {};
+  const gastTeam = gekoppeldTeam(team);
+  if (gastTeam) {
+    const gastRows = await env.DB.prepare("SELECT id, naam FROM personen WHERE team_id = ?").bind(gastTeam).all();
+    gastRows.results.forEach((r) => (gasten[r.id] = { naam: r.naam, team: gastTeam, teamNaam: naamVoorTeam(gastTeam) }));
+  }
   for (const d of diensten.results) {
     const beschikbaar = await env.DB.prepare("SELECT persoon_id FROM beschikbaarheid WHERE dienst_id = ? AND team_id = ?")
       .bind(d.id, team)
@@ -291,7 +360,7 @@ async function handleGetDiensten(req, env, ctx) {
       tekorten: tekorten.results.map((r) => r.functie_code),
     });
   }
-  return json({ diensten: result });
+  return json({ diensten: result, gasten });
 }
 
 async function handleAddDienst(req, env, ctx) {
@@ -400,8 +469,14 @@ async function handleIndelenEen(req, env, ctx) {
   const beschikbaarIds = new Set(beschikbaarRows.results.map((r) => r.persoon_id));
   const beschikbarePersonen = allePersonen.filter((p) => beschikbaarIds.has(p.id));
 
+  // Vorige dienst ophalen zodat niemand twee keer op rij dezelfde functie krijgt
+  const dienstRij = await env.DB.prepare("SELECT datum FROM diensten WHERE id = ? AND team_id = ?")
+    .bind(dienstId, team)
+    .first();
+  const vorige = dienstRij ? await vorigeToewijzing(env.DB, team, dienstRij.datum) : {};
+
   const counts = await buildCounts(env.DB, team);
-  const { toewijzing, tekorten } = assignDienst(beschikbarePersonen, counts, functiesVoorTeam(team));
+  const { toewijzing, tekorten } = assignDienst(beschikbarePersonen, counts, functiesVoorTeam(team), vorige);
 
   await env.DB.prepare("DELETE FROM toewijzingen WHERE dienst_id = ? AND team_id = ?").bind(dienstId, team).run();
   await env.DB.prepare("DELETE FROM tekorten WHERE dienst_id = ? AND team_id = ?").bind(dienstId, team).run();
@@ -424,6 +499,32 @@ async function handleIndelenEen(req, env, ctx) {
   return json({ toewijzing, tekorten });
 }
 
+// Mensen uit het gekoppelde team die als gast ingevuld kunnen worden.
+// Alleen bedoeld voor handmatig invullen — het automatisch indelen gebruikt ze niet.
+async function handleGastKandidaten(req, env, ctx) {
+  const gastTeam = gekoppeldTeam(ctx.team);
+  if (!gastTeam) return json({ gastTeam: null, gastTeamNaam: null, personen: [] });
+  const personen = await getPersonenMetFuncties(env.DB, gastTeam);
+  return json({ gastTeam, gastTeamNaam: naamVoorTeam(gastTeam), personen });
+}
+
+// Is er nog een EIGEN teamlid dat deze functie kan vervullen en beschikbaar is?
+// Zo ja, dan mag een gast deze rol niet innemen (geldt voor B, CTS en CL).
+async function eigenKandidaatBeschikbaar(db, team, dienstId, functieCode, negeerPersoonId) {
+  const rij = await db
+    .prepare(
+      `SELECT pf.persoon_id FROM persoon_functies pf
+       JOIN beschikbaarheid b ON b.persoon_id = pf.persoon_id AND b.dienst_id = ?
+       WHERE pf.team_id = ? AND b.team_id = ? AND pf.functie_code = ?
+         AND pf.persoon_id NOT IN (
+           SELECT persoon_id FROM toewijzingen WHERE dienst_id = ? AND team_id = ? AND persoon_id != ?
+         )`
+    )
+    .bind(dienstId, team, team, functieCode, dienstId, team, negeerPersoonId || "")
+    .first();
+  return !!rij;
+}
+
 async function handleWijzigToewijzing(req, env, ctx) {
   const dienstId = ctx.params.id;
   const team = ctx.team;
@@ -431,6 +532,68 @@ async function handleWijzigToewijzing(req, env, ctx) {
 
   if (!functiesVoorTeam(team).includes(functie_code)) return json({ error: "Onbekende functie." }, 400);
   if (!nieuwe_persoon_id) return json({ error: "Nieuwe persoon is verplicht." }, 400);
+
+  // Hoort deze persoon bij het eigen team, of is het een gast uit het gekoppelde team?
+  const gastTeam = gekoppeldTeam(team);
+  const eigenPersoon = await env.DB.prepare("SELECT id FROM personen WHERE id = ? AND team_id = ?")
+    .bind(nieuwe_persoon_id, team)
+    .first();
+  const isGast = !eigenPersoon;
+
+  if (isGast) {
+    if (!gastTeam) return json({ error: "Deze persoon hoort niet bij dit team." }, 400);
+    const gastPersoon = await env.DB.prepare("SELECT id FROM personen WHERE id = ? AND team_id = ?")
+      .bind(nieuwe_persoon_id, gastTeam)
+      .first();
+    if (!gastPersoon) return json({ error: "Deze persoon hoort niet bij dit team of het gekoppelde team." }, 400);
+
+    // Voorrangsregel: eigen mensen gaan voor op Bevelvoerder en de chauffeursrollen
+    if (EIGEN_TEAM_VOORRANG.includes(functie_code)) {
+      const eigenBeschikbaar = await eigenKandidaatBeschikbaar(
+        env.DB,
+        team,
+        dienstId,
+        functie_code,
+        oude_persoon_id
+      );
+      if (eigenBeschikbaar) {
+        return json(
+          { error: "Er is nog een eigen teamlid beschikbaar voor deze functie — een gast mag deze rol dan niet vervullen." },
+          400
+        );
+      }
+    }
+
+    // Mag de gast deze functie vervullen (volgens de bevoegdheden in zijn eigen team)?
+    const gastMag = await env.DB.prepare(
+      "SELECT 1 FROM persoon_functies WHERE persoon_id = ? AND functie_code = ? AND team_id = ?"
+    )
+      .bind(nieuwe_persoon_id, functie_code, gastTeam)
+      .first();
+    if (!gastMag) return json({ error: "Deze persoon mag deze functie niet vervullen." }, 400);
+
+    // Gast vervangt wie er stond; gasten ruilen niet van functie onderling
+    if (oude_persoon_id) {
+      await env.DB.prepare(
+        "DELETE FROM toewijzingen WHERE dienst_id = ? AND persoon_id = ? AND functie_code = ? AND team_id = ?"
+      )
+        .bind(dienstId, oude_persoon_id, functie_code, team)
+        .run();
+    }
+    await env.DB.prepare("DELETE FROM toewijzingen WHERE dienst_id = ? AND persoon_id = ? AND team_id = ?")
+      .bind(dienstId, nieuwe_persoon_id, team)
+      .run();
+    await env.DB.prepare(
+      "INSERT INTO toewijzingen (dienst_id, persoon_id, functie_code, handmatig, team_id) VALUES (?, ?, ?, 1, ?)"
+    )
+      .bind(dienstId, nieuwe_persoon_id, functie_code, team)
+      .run();
+    await env.DB.prepare("DELETE FROM tekorten WHERE dienst_id = ? AND functie_code = ? AND team_id = ?")
+      .bind(dienstId, functie_code, team)
+      .run();
+
+    return json({ ok: true, gast: true });
+  }
 
   const beschikbaar = await env.DB.prepare(
     "SELECT 1 FROM beschikbaarheid WHERE dienst_id = ? AND persoon_id = ? AND team_id = ?"
@@ -533,6 +696,9 @@ async function handleIndelenAlles(req, env, ctx) {
     functies.forEach((f) => (counts[p.id][f] = 0));
   });
 
+  // Houdt bij wie in de vorige ingedeelde dienst welke functie had
+  let vorigeRonde = {};
+
   for (const d of alleDiensten.results) {
     const beschikbaarRows = await env.DB.prepare(
       "SELECT persoon_id FROM beschikbaarheid WHERE dienst_id = ? AND team_id = ?"
@@ -542,7 +708,13 @@ async function handleIndelenAlles(req, env, ctx) {
     const beschikbaarIds = new Set(beschikbaarRows.results.map((r) => r.persoon_id));
     const beschikbarePersonen = allePersonen.filter((p) => beschikbaarIds.has(p.id));
 
-    const { toewijzing, tekorten } = assignDienst(beschikbarePersonen, counts, functies);
+    const { toewijzing, tekorten } = assignDienst(beschikbarePersonen, counts, functies, vorigeRonde);
+
+    // Onthoud deze indeling als "vorige dienst" voor de volgende ronde
+    vorigeRonde = {};
+    functies.forEach((code) => {
+      (toewijzing[code] || []).forEach((pid) => (vorigeRonde[pid] = code));
+    });
 
     for (const code of functies) {
       for (const personId of toewijzing[code]) {
@@ -569,7 +741,13 @@ async function handlePubliekRooster(req, env, ctx) {
   const personen = await getPersonenMetFuncties(env.DB, team);
   const dienstenResp = await handleGetDiensten(req, env, ctx);
   const dienstenData = await dienstenResp.json();
-  return json({ team, team_naam: naamVoorTeam(team), personen, diensten: dienstenData.diensten });
+  return json({
+    team,
+    team_naam: naamVoorTeam(team),
+    personen,
+    diensten: dienstenData.diensten,
+    gasten: dienstenData.gasten || {},
+  });
 }
 
 // --- NIEUW: lijst van teams, zodat de gast-weergave een keuzemenu kan tonen zonder dit hard te coderen ---
@@ -589,6 +767,8 @@ const routes = [
   { method: "POST", pattern: /^\/api\/personen$/, handler: requireAuth(handleAddPersoon) },
   { method: "DELETE", pattern: /^\/api\/personen\/([^/]+)$/, handler: requireAuth(handleDeletePersoon), params: ["id"] },
   { method: "POST", pattern: /^\/api\/personen\/([^/]+)\/functie$/, handler: requireAuth(handleSetFunctie), params: ["id"] },
+
+  { method: "GET", pattern: /^\/api\/gastkandidaten$/, handler: requireAuth(handleGastKandidaten) },
 
   { method: "GET", pattern: /^\/api\/diensten$/, handler: requireAuth(handleGetDiensten) },
   { method: "POST", pattern: /^\/api\/diensten$/, handler: requireAuth(handleAddDienst) },

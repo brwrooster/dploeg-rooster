@@ -528,7 +528,7 @@ async function eigenKandidaatBeschikbaar(db, team, dienstId, functieCode, negeer
 async function handleWijzigToewijzing(req, env, ctx) {
   const dienstId = ctx.params.id;
   const team = ctx.team;
-  const { functie_code, oude_persoon_id, nieuwe_persoon_id } = await req.json();
+  const { functie_code, oude_persoon_id, nieuwe_persoon_id, negeer_voorrang } = await req.json();
 
   if (!functiesVoorTeam(team).includes(functie_code)) return json({ error: "Onbekende functie." }, 400);
   if (!nieuwe_persoon_id) return json({ error: "Nieuwe persoon is verplicht." }, 400);
@@ -547,8 +547,10 @@ async function handleWijzigToewijzing(req, env, ctx) {
       .first();
     if (!gastPersoon) return json({ error: "Deze persoon hoort niet bij dit team of het gekoppelde team." }, 400);
 
-    // Voorrangsregel: eigen mensen gaan voor op Bevelvoerder en de chauffeursrollen
-    if (EIGEN_TEAM_VOORRANG.includes(functie_code)) {
+    // Voorrangsregel: eigen mensen gaan voor op Bevelvoerder en de chauffeursrollen.
+    // Dit is nu een WAARSCHUWING, geen harde blokkade: de beheerder kan het bewust
+    // negeren (bijv. na een ruiling), maar krijgt eerst een duidelijke melding.
+    if (EIGEN_TEAM_VOORRANG.includes(functie_code) && !negeer_voorrang) {
       const eigenBeschikbaar = await eigenKandidaatBeschikbaar(
         env.DB,
         team,
@@ -558,8 +560,11 @@ async function handleWijzigToewijzing(req, env, ctx) {
       );
       if (eigenBeschikbaar) {
         return json(
-          { error: "Er is nog een eigen teamlid beschikbaar voor deze functie — een gast mag deze rol dan niet vervullen." },
-          400
+          {
+            error: "Er is nog een eigen teamlid beschikbaar voor deze functie. Weet je zeker dat je toch een gast wilt inzetten?",
+            waarschuwing: true,
+          },
+          409
         );
       }
     }

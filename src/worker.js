@@ -217,6 +217,47 @@ function assignDienst(beschikbarePersonen, counts, functieOrder, vorigeFunctiePe
     counts[gekozen.id].total = (counts[gekozen.id].total ?? 0) + 1;
   }
 
+  // ---------- Herstelstap: Bevelvoerder-bevoegden uit Manschap ruilen ----------
+  // Het schaarste-algoritme hierboven kijkt nooit terug: het kan gebeuren dat een
+  // Chauffeursplek eerder wordt gevuld door iemand die ook Manschap had gekund,
+  // waardoor een Bevelvoerder-bevoegd persoon daarna "gedwongen" als Manschap
+  // instroomt. Deze stap zoekt zulke gevallen actief op en ruilt ze recht.
+  const personenById = {};
+  beschikbarePersonen.forEach((p) => (personenById[p.id] = p));
+  const CHAUFFEUR_CODES = ["CTS", "CL"];
+  let ruilGevonden = true;
+  let pogingen = 0;
+  while (ruilGevonden && pogingen < 10) {
+    ruilGevonden = false;
+    pogingen += 1;
+    for (const mPid of toewijzing["M"] || []) {
+      const mPersoon = personenById[mPid];
+      if (!mPersoon || !magFunctie(mPersoon, "B")) continue; // alleen relevant voor Bevelvoerder-bevoegden
+      for (const cCode of CHAUFFEUR_CODES) {
+        const cList = toewijzing[cCode] || [];
+        const ruilbarePid = cList.find((cPid) => {
+          const cPersoon = personenById[cPid];
+          if (!cPersoon || magFunctie(cPersoon, "B")) return false; // zelf ook Bevelvoerder: geen verbetering
+          return magFunctie(mPersoon, cCode) && magFunctie(cPersoon, "M");
+        });
+        if (ruilbarePid) {
+          // Tel-boekhouding meeruilen, zodat de eerlijkheidsverdeling klopt
+          const cPersoon = personenById[ruilbarePid];
+          counts[mPersoon.id]["M"] = Math.max(0, (counts[mPersoon.id]["M"] ?? 1) - 1);
+          counts[mPersoon.id][cCode] = (counts[mPersoon.id][cCode] ?? 0) + 1;
+          counts[cPersoon.id][cCode] = Math.max(0, (counts[cPersoon.id][cCode] ?? 1) - 1);
+          counts[cPersoon.id]["M"] = (counts[cPersoon.id]["M"] ?? 0) + 1;
+
+          toewijzing["M"] = toewijzing["M"].map((id) => (id === mPid ? ruilbarePid : id));
+          toewijzing[cCode] = toewijzing[cCode].map((id) => (id === ruilbarePid ? mPid : id));
+          ruilGevonden = true;
+          break;
+        }
+      }
+      if (ruilGevonden) break;
+    }
+  }
+
   return { toewijzing, tekorten: [...new Set(tekorten)] };
 }
 

@@ -335,7 +335,7 @@ async function handleGetDiensten(req, env, ctx) {
       .bind(d.id, team)
       .all();
     const toewijzing = await env.DB.prepare(
-      "SELECT persoon_id, functie_code, handmatig FROM toewijzingen WHERE dienst_id = ? AND team_id = ?"
+      "SELECT persoon_id, functie_code, handmatig, vrijwilliger_naam FROM toewijzingen WHERE dienst_id = ? AND team_id = ?"
     )
       .bind(d.id, team)
       .all();
@@ -346,9 +346,14 @@ async function handleGetDiensten(req, env, ctx) {
     const toewijzingMap = {};
     functiesVoorTeam(team).forEach((f) => (toewijzingMap[f] = []));
     const handmatigPersonen = [];
+    // Naamoverride is per DIENST, niet globaal — zo kan "Vrijwilliger" op de ene
+    // dag "Henk" heten en op een andere dag gewoon iemand anders, zonder dat het
+    // door elkaar loopt.
+    const naamOverrides = {};
     toewijzing.results.forEach((r) => {
       toewijzingMap[r.functie_code]?.push(r.persoon_id);
       if (r.handmatig) handmatigPersonen.push(r.persoon_id);
+      if (r.vrijwilliger_naam) naamOverrides[r.persoon_id] = r.vrijwilliger_naam;
     });
 
     result.push({
@@ -358,6 +363,7 @@ async function handleGetDiensten(req, env, ctx) {
       toewijzing: toewijzing.results.length > 0 ? toewijzingMap : null,
       handmatigPersonen,
       tekorten: tekorten.results.map((r) => r.functie_code),
+      naamOverrides,
     });
   }
   return json({ diensten: result, gasten });
@@ -528,9 +534,33 @@ async function eigenKandidaatBeschikbaar(db, team, dienstId, functieCode, negeer
 async function handleWijzigToewijzing(req, env, ctx) {
   const dienstId = ctx.params.id;
   const team = ctx.team;
-  const { functie_code, oude_persoon_id, nieuwe_persoon_id, negeer_voorrang } = await req.json();
+  const { functie_code, oude_persoon_id, nieuwe_persoon_id, negeer_voorrang, vrijwilliger_naam } = await req.json();
 
   if (!functiesVoorTeam(team).includes(functie_code)) return json({ error: "Onbekende functie." }, 400);
+
+  // --- Ad-hoc vrijwilliger: iemand buiten het systeem, geen eigen teamlid en geen gast ---
+  // Wordt gebruikt als er geen bestaand persoon gekozen wordt maar wel een (vrije) naam is opgegeven.
+  if (!nieuwe_persoon_id && vrijwilliger_naam !== undefined) {
+    const naam = (vrijwilliger_naam || "").trim() || "Vrijwilliger";
+    const id = "vrij-" + uid();
+    if (oude_persoon_id) {
+      await env.DB.prepare(
+        "DELETE FROM toewijzingen WHERE dienst_id = ? AND persoon_id = ? AND functie_code = ? AND team_id = ?"
+      )
+        .bind(dienstId, oude_persoon_id, functie_code, team)
+        .run();
+    }
+    await env.DB.prepare(
+      "INSERT INTO toewijzingen (dienst_id, persoon_id, functie_code, handmatig, team_id, vrijwilliger_naam) VALUES (?, ?, ?, 1, ?, ?)"
+    )
+      .bind(dienstId, id, functie_code, team, naam)
+      .run();
+    await env.DB.prepare("DELETE FROM tekorten WHERE dienst_id = ? AND functie_code = ? AND team_id = ?")
+      .bind(dienstId, functie_code, team)
+      .run();
+    return json({ ok: true, vrijwilliger: true, persoon_id: id, naam });
+  }
+
   if (!nieuwe_persoon_id) return json({ error: "Nieuwe persoon is verplicht." }, 400);
 
   // Hoort deze persoon bij het eigen team, of is het een gast uit het gekoppelde team?
@@ -686,6 +716,29 @@ async function handleWijzigToewijzing(req, env, ctx) {
   return json({ ok: true });
 }
 
+// Weergavenaam voor een SPECIFIEKE dienst aanpassen (bijv. een teamlid dat "Vrijwilliger"
+// heet krijgt op déze ene dag de echte naam "Henk" te zien — andere diensten blijven ongewijzigd,
+// en de onderliggende toewijzing/bevoegdheden/tellingen blijven intact).
+async function handleNaamOverride(req, env, ctx) {
+  const dienstId = ctx.params.id;
+  const team = ctx.team;
+  const { persoon_id, functie_code, naam } = await req.json();
+  if (!persoon_id) return json({ error: "Persoon is verplicht." }, 400);
+  const nieuweNaam = (naam || "").trim();
+  if (!nieuweNaam) return json({ error: "Naam mag niet leeg zijn." }, 400);
+
+  let query = "UPDATE toewijzingen SET vrijwilliger_naam = ? WHERE dienst_id = ? AND persoon_id = ? AND team_id = ?";
+  const params = [nieuweNaam, dienstId, persoon_id, team];
+  if (functie_code) {
+    query += " AND functie_code = ?";
+    params.push(functie_code);
+  }
+  await env.DB.prepare(query)
+    .bind(...params)
+    .run();
+  return json({ ok: true, naam: nieuweNaam });
+}
+
 async function handleIndelenAlles(req, env, ctx) {
   const team = ctx.team;
   const functies = functiesVoorTeam(team);
@@ -783,6 +836,7 @@ const routes = [
   { method: "POST", pattern: /^\/api\/diensten\/([^/]+)\/beschikbaar-alle$/, handler: requireAuth(handleSetAlleBeschikbaar), params: ["id"] },
   { method: "POST", pattern: /^\/api\/diensten\/([^/]+)\/indelen$/, handler: requireAuth(handleIndelenEen), params: ["id"] },
   { method: "POST", pattern: /^\/api\/diensten\/([^/]+)\/wijzig-toewijzing$/, handler: requireAuth(handleWijzigToewijzing), params: ["id"] },
+  { method: "POST", pattern: /^\/api\/diensten\/([^/]+)\/naam-override$/, handler: requireAuth(handleNaamOverride), params: ["id"] },
   { method: "POST", pattern: /^\/api\/diensten\/indelen-alles$/, handler: requireAuth(handleIndelenAlles) },
 ];
 

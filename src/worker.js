@@ -704,10 +704,15 @@ async function handleWijzigToewijzing(req, env, ctx) {
       return json({ error: "Kan niet wisselen: er staat hier niemand om mee te ruilen." }, 400);
     }
 
+    // Let op: oude_persoon_id kan een GAST zijn (uit de gekoppelde ploeg). Zijn
+    // bevoegdheden staan dan onder zíjn eigen team_id, niet onder "team". Daarom
+    // hier niet filteren op "team", maar op het team waar deze persoon zelf bij hoort.
     const oudeMagNieuweFunctie = await env.DB.prepare(
-      "SELECT 1 FROM persoon_functies WHERE persoon_id = ? AND functie_code = ? AND team_id = ?"
+      `SELECT 1 FROM persoon_functies pf
+       JOIN personen p ON p.id = pf.persoon_id AND p.team_id = pf.team_id
+       WHERE pf.persoon_id = ? AND pf.functie_code = ?`
     )
-      .bind(oude_persoon_id, huidigeFunctieVanNieuwePersoon, team)
+      .bind(oude_persoon_id, huidigeFunctieVanNieuwePersoon)
       .first();
     if (!oudeMagNieuweFunctie) {
       return json({ error: "De huidige persoon op deze plek mag de andere functie niet vervullen — wisselen niet mogelijk." }, 400);

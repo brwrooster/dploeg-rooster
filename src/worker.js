@@ -795,12 +795,31 @@ async function handleNaamOverride(req, env, ctx) {
 
 async function handleIndelenAlles(req, env, ctx) {
   const team = ctx.team;
+  const body = await req.json().catch(() => ({}));
+  const jaar = body && body.jaar ? String(body.jaar) : null;
   const functies = functiesVoorTeam(team);
-  const alleDiensten = await env.DB.prepare("SELECT id FROM diensten WHERE team_id = ? ORDER BY datum").bind(team).all();
+
+  // Als er een jaar is meegegeven, alleen diensten van dat jaar meenemen —
+  // andere jaren blijven volledig ongemoeid (eigen, aparte eerlijkheidsverdeling).
+  let dienstenQuery = "SELECT id FROM diensten WHERE team_id = ?";
+  const dienstenParams = [team];
+  if (jaar) {
+    dienstenQuery += " AND datum LIKE ?";
+    dienstenParams.push(jaar + "-%");
+  }
+  dienstenQuery += " ORDER BY datum";
+  const alleDiensten = await env.DB.prepare(dienstenQuery)
+    .bind(...dienstenParams)
+    .all();
   const allePersonen = await getPersonenMetFuncties(env.DB, team);
 
-  await env.DB.prepare("DELETE FROM toewijzingen WHERE team_id = ?").bind(team).run();
-  await env.DB.prepare("DELETE FROM tekorten WHERE team_id = ?").bind(team).run();
+  // Alleen de toewijzingen/tekorten van de diensten binnen de scope wissen —
+  // nooit een blanket delete over het hele team, anders verdwijnt ook data
+  // van andere jaren die helemaal niet herberekend worden.
+  for (const d of alleDiensten.results) {
+    await env.DB.prepare("DELETE FROM toewijzingen WHERE team_id = ? AND dienst_id = ?").bind(team, d.id).run();
+    await env.DB.prepare("DELETE FROM tekorten WHERE team_id = ? AND dienst_id = ?").bind(team, d.id).run();
+  }
 
   const counts = {};
   allePersonen.forEach((p) => {

@@ -372,8 +372,12 @@ async function handleGetDiensten(req, env, ctx) {
   const gasten = {};
   const gastTeam = gekoppeldTeam(team);
   if (gastTeam) {
-    const gastRows = await env.DB.prepare("SELECT id, naam FROM personen WHERE team_id = ?").bind(gastTeam).all();
-    gastRows.results.forEach((r) => (gasten[r.id] = { naam: r.naam, team: gastTeam, teamNaam: naamVoorTeam(gastTeam) }));
+    // getPersonenMetFuncties geeft ook de bevoegdheden mee — nodig zodat het
+    // ruilen tussen een gast en een eigen teamlid correct gecontroleerd kan worden.
+    const gastPersonen = await getPersonenMetFuncties(env.DB, gastTeam);
+    gastPersonen.forEach((p) => {
+      gasten[p.id] = { naam: p.naam, team: gastTeam, teamNaam: naamVoorTeam(gastTeam), functies: p.functies };
+    });
   }
   for (const d of diensten.results) {
     const beschikbaar = await env.DB.prepare("SELECT persoon_id FROM beschikbaarheid WHERE dienst_id = ? AND team_id = ?")
